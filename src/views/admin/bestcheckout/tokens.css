@@ -1,0 +1,33 @@
+:root {
+  color-scheme: light;
+  --p-bg: #f1f1f1;
+  --p-bg-subdued: #f7f7f7;
+  --p-surface: #ffffff;
+  --p-surface-hover: #f7f7f7;
+  --p-text: #303030;
+  --p-text-subdued: #616161;
+  --p-text-disabled: #8a8a8a;
+  --p-border: #e3e3e3;
+  --p-border-strong: #c9cccf;
+  --p-action: #303030;
+  --p-action-hover: #1f1f1f;
+  --p-interactive: #005bd3;
+  --p-success: #29845a;
+  --p-success-bg: #eaf6f0;
+  --p-success-border: #b7dec9;
+  --p-warning: #8a5300;
+  --p-warning-bg: #fff4d7;
+  --p-warning-border: #eecb76;
+  --p-critical: #8e1f0b;
+  --p-critical-bg: #fff0ee;
+  --p-critical-border: #efc4bd;
+  --p-info: #005bd3;
+  --p-info-bg: #eef5ff;
+  --p-info-border: #c5d9f7;
+  --p-shadow-card: 0 1px 0 rgba(0, 0, 0, .05), 0 1px 3px rgba(0, 0, 0, .08);
+  --p-shadow-popover: 0 12px 28px rgba(0, 0, 0, .16), 0 2px 6px rgba(0, 0, 0, .08);
+  --p-radius: 12px;
+  --p-radius-control: 8px;
+  --shopify-sidebar: 240px;
+  --shopify-topbar: 56px;
+}

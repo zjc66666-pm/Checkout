@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BestCheckout · Redirecting</title>
+  </head>
+  <body>
+    <p>Opening BestCheckout…</p>
+    <script>
+      (function () {
+        var parts = window.location.pathname.split('/').filter(Boolean);
+        var onGitHubPages = window.location.hostname.endsWith('.github.io');
+        var appSegment = parts.indexOf('bestcheckout-shopify-app');
+        var base = appSegment >= 0
+          ? '/' + parts.slice(0, appSegment + 1).join('/') + '/'
+          : onGitHubPages && parts.length
+            ? '/' + parts[0] + '/'
+            : '/';
+        window.location.replace(base + '#/home');
+      })();
+    </script>
+  </body>
+</html>

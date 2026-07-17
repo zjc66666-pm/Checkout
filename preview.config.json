@@ -1,0 +1,66 @@
+{
+  "name": "BestCheckout Shopify Custom App",
+  "entry": "index.html",
+  "staticRoot": ".",
+  "routing": {
+    "prototype": "hash",
+    "production": "app-bridge-relative-paths"
+  },
+  "contracts": {
+    "funnelDeploymentSchema": "bestcheckout.funnel-deployment.v1",
+    "cartHandoffSchema": "bestcheckout.cart-handoff.v1",
+    "trackingContract": "bestcheckout.tracking.v1",
+    "prototypeHashAlgorithm": "prototype-fnv1a32",
+    "productionHashAlgorithm": "canonical-json-v1+sha256",
+    "editorCoreTarget": "@bestshopio/checkout-editor-core"
+  },
+  "localPreview": {
+    "command": "python -m http.server 4175",
+    "url": "http://127.0.0.1:4175/#/home"
+  },
+  "githubPages": {
+    "branch": "main",
+    "directory": "/",
+    "buildRequired": false,
+    "jekyll": false,
+    "publicWhitelist": [
+      ".nojekyll",
+      "404.html",
+      "index.html",
+      "preview.config.json",
+      "src/views/admin/bestcheckout/**"
+    ],
+    "targetOptions": [
+      {
+        "repo": "zjc66666-pm/bestcheckout-shopify-custom-app-prototype",
+        "path": "/",
+        "status": "repository-not-created"
+      },
+      {
+        "repo": "zjc66666-pm/bestshopio-prototypes",
+        "path": "/bestcheckout-shopify-app/",
+        "status": "recommended-after-user-confirmation"
+      }
+    ]
+  },
+  "smokeRoutes": [
+    "#/home",
+    "#/funnels",
+    "#/pages",
+    "#/performance",
+    "#/activity",
+    "#/settings?tab=payments",
+    "#/settings?tab=diagnostics",
+    "#/pages/page-aura-checkout/edit",
+    "#/funnels/funnel-sleep-reset/nodes/checkout-main/edit"
+  ],
+  "interactionSmoke": [
+    "English -> 简体中文 -> English",
+    "Pages editor -> desktop/mobile preview",
+    "Funnel node editor -> live pin/latest page/draft context",
+    "Create typed Page -> replace Funnel node page",
+    "Draft page publish -> Funnel republish",
+    "Pause -> resume last deployment without publishing draft",
+    "Pause -> publish current draft and resume"
+  ]
+}
