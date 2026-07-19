@@ -33,7 +33,7 @@ import {
 import { renderHome } from './pages/home.js?rev=20260717-trend-refinement-v81';
 import { renderFunnels } from './pages/funnels.js?rev=20260717-store-state-v77';
 import { renderPages } from './pages/pages.js?rev=20260719-page-actions-menu-v84';
-import { renderPerformance } from './pages/performance.js';
+import { renderPerformance } from './pages/performance.js?rev=20260719-remove-custom-columns-v87';
 import { renderActivity } from './pages/activity.js?rev=20260717-inline-activity-filter-v61';
 import { renderSettings } from './pages/settings.js?rev=20260717-installation-flow-v82';
 import { renderEditor, mountEditor } from './pages/editor.js?rev=20260719-reference-checkout-editor-v86';
@@ -1193,10 +1193,6 @@ function handleAction(action, element) {
   }
   if (action === 'download-mapping-report' || action === 'export-performance' || action === 'export-activity') {
     showToast('Prototype export prepared. Production generates a signed CSV from the backend.', 'info');
-    return;
-  }
-  if (action === 'customize-columns') {
-    showToast('Column preferences are saved per merchant user in production.', 'info');
     return;
   }
   if (action === 'editor-section') {

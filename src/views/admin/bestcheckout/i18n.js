@@ -299,7 +299,6 @@ const ZH = {
   'Export': '导出',
   'Checkout revenue trend': '结账收入趋势',
   'BestCheckout attributed GMV · daily': 'BestCheckout 归因 GMV · 按天',
-  'Customize columns': '自定义列',
   'Name': '名称',
   'Sessions': '会话数',
   'Conversion / rate': '转化 / 比率',
