@@ -22,14 +22,17 @@ import {
   renderRemoveJourneyPageModal,
   renderInfoModal,
   renderPublishModal,
+  renderArchivePageModal,
+  renderPageVersionHistoryModal,
+  renderRenamePageModal,
   renderSelectNodePageModal,
   renderTrackingReviewModal,
   renderTrafficModal,
   renderUnsavedChangesModal,
-} from './components/modals.js?rev=20260717-install-entry-v83';
+} from './components/modals.js?rev=20260719-page-actions-menu-v84';
 import { renderHome } from './pages/home.js?rev=20260717-trend-refinement-v81';
 import { renderFunnels } from './pages/funnels.js?rev=20260717-store-state-v77';
-import { renderPages } from './pages/pages.js?rev=20260717-store-state-v77';
+import { renderPages } from './pages/pages.js?rev=20260719-page-actions-menu-v84';
 import { renderPerformance } from './pages/performance.js';
 import { renderActivity } from './pages/activity.js?rev=20260717-inline-activity-filter-v61';
 import { renderSettings } from './pages/settings.js?rev=20260717-installation-flow-v82';
@@ -731,6 +734,7 @@ function handleAction(action, element) {
     copy.metric = '—';
     copy.change = 'Not live';
     state.pages.unshift(copy);
+    state.ui.pageActionMenuId = null;
     renderShell();
     showToast('Page duplicated as a new draft.');
     return;
@@ -740,7 +744,23 @@ function handleAction(action, element) {
     return;
   }
   if (action === 'page-more') {
-    showToast('Page actions include rename, duplicate, archive and version history.', 'info');
+    state.ui.pageActionMenuId = state.ui.pageActionMenuId === element.dataset.pageId ? null : element.dataset.pageId;
+    renderShell();
+    return;
+  }
+  if (action === 'rename-page') {
+    const page = state.pages.find(function (item) { return item.id === element.dataset.pageId; });
+    if (page) openModal(renderRenamePageModal(page));
+    return;
+  }
+  if (action === 'show-page-versions') {
+    const page = state.pages.find(function (item) { return item.id === element.dataset.pageId; });
+    if (page) openModal(renderPageVersionHistoryModal(page));
+    return;
+  }
+  if (action === 'archive-page') {
+    const page = state.pages.find(function (item) { return item.id === element.dataset.pageId; });
+    if (page) openModal(renderArchivePageModal(page));
     return;
   }
   if (action === 'open-shared-styles') {
@@ -1272,6 +1292,10 @@ function handleClick(event) {
     state.ui.storeMenuOpen = false;
     renderShell();
   }
+  if (state.ui.pageActionMenuId && !event.target.closest('.page-action-popover')) {
+    state.ui.pageActionMenuId = null;
+    renderShell();
+  }
   const localeElement = event.target.closest('[data-locale]');
   if (localeElement) {
     event.preventDefault();
@@ -1301,6 +1325,38 @@ function handleClick(event) {
 
 function bindFormSubmissions(event) {
   const form = event.target;
+  if (form.id === 'rename-page-form') {
+    event.preventDefault();
+    const data = new FormData(form);
+    const page = state.pages.find(function (item) { return item.id === data.get('pageId'); });
+    const name = String(data.get('name') || '').trim();
+    if (!page || !name) return;
+    page.name = name;
+    page.updated = 'Just now';
+    state.ui.pageActionMenuId = null;
+    closeModal();
+    renderShell();
+    showToast('Page renamed.');
+    return;
+  }
+  if (form.id === 'archive-page-form') {
+    event.preventDefault();
+    const data = new FormData(form);
+    const index = state.pages.findIndex(function (item) { return item.id === data.get('pageId'); });
+    if (index < 0) return;
+    const page = state.pages[index];
+    if (page.usedBy > 0) {
+      closeModal();
+      showToast('Remove this page from its Funnels before archiving.', 'info');
+      return;
+    }
+    state.pages.splice(index, 1);
+    state.ui.pageActionMenuId = null;
+    closeModal();
+    renderShell();
+    showToast('Page archived.');
+    return;
+  }
   if (form.id === 'create-page-form') {
     event.preventDefault();
     const data = new FormData(form);

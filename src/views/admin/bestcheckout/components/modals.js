@@ -604,3 +604,31 @@ export function renderUnsavedChangesModal(targetRoute) {
   const footer = button('Stay', 'close-modal') + '<button type="button" class="button button-secondary" data-action="discard-and-route" data-target-route="' + escapeHtml(targetRoute) + '">Discard and leave</button><button type="button" class="button button-primary" data-action="save-and-route" data-target-route="' + escapeHtml(targetRoute) + '">Save and leave</button>';
   return modalShell('unsaved-changes', 'Leave page editor?', 'The published page and pinned Funnel versions are not affected.', body, footer, false);
 }
+
+export function renderRenamePageModal(page) {
+  const body = '<form id="rename-page-form" class="form-stack"><input type="hidden" name="pageId" value="' + escapeHtml(page.id) + '"/><label>Page name<input type="text" name="name" value="' + escapeHtml(page.name) + '" maxlength="80" required autofocus/></label><div class="modal-callout"><span>' + icon('shield', 17) + '</span><span><strong>Renaming does not change the live page</strong><small>Published versions and Funnel deployments stay pinned until you publish again.</small></span></div></form>';
+  const footer = button('Cancel', 'close-modal') + '<button type="submit" form="rename-page-form" class="button button-primary">Save name</button>';
+  return modalShell('rename-page', 'Rename page', page.name, body, footer, false);
+}
+
+export function renderPageVersionHistoryModal(page) {
+  const published = page.publishedVersionId
+    ? '<article><span class="version-state is-published">Published</span><div><strong>Version ' + escapeHtml(page.version) + '</strong><small>Used by current live Funnel deployments until they are republished.</small></div></article>'
+    : '<article><span class="version-state">Not published</span><div><strong>No live version yet</strong><small>Publish a saved draft before this page can receive live traffic.</small></div></article>';
+  const draft = page.draftRevision
+    ? '<article><span class="version-state is-draft">Draft</span><div><strong>Revision ' + escapeHtml(page.draftRevision) + '</strong><small>Latest editable draft. Saving creates a new revision; publishing creates an immutable version.</small></div></article>'
+    : '<article><span class="version-state">No draft</span><div><strong>Published page is current</strong><small>Start editing to create the next draft revision.</small></div></article>';
+  const body = '<div class="page-version-list">' + draft + published + '</div>';
+  return modalShell('page-versions', 'Version history', page.name, body, button('Done', 'close-modal', { kind: 'primary' }), false);
+}
+
+export function renderArchivePageModal(page) {
+  const inUse = page.usedBy > 0;
+  const body = inUse
+    ? '<div class="modal-callout modal-callout-warning">' + icon('alert', 17) + '<span><strong>This page is still used by ' + escapeHtml(page.usedBy) + ' Funnel' + (page.usedBy === 1 ? '' : 's') + '</strong><small>Remove or replace it in every Funnel before archiving. Existing published deployments remain unchanged.</small></span></div>'
+    : '<form id="archive-page-form" class="form-stack"><input type="hidden" name="pageId" value="' + escapeHtml(page.id) + '"/><div class="modal-callout modal-callout-warning">' + icon('alert', 17) + '<span><strong>Archive this page?</strong><small>It will be removed from the active page library. Existing published deployments remain unchanged.</small></span></div></form>';
+  const footer = inUse
+    ? button('Done', 'close-modal', { kind: 'primary' })
+    : button('Cancel', 'close-modal') + '<button type="submit" form="archive-page-form" class="button button-critical">Archive page</button>';
+  return modalShell('archive-page', 'Archive page', page.name, body, footer, false);
+}
