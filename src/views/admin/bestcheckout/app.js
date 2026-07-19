@@ -36,7 +36,7 @@ import { renderPages } from './pages/pages.js?rev=20260719-page-actions-menu-v84
 import { renderPerformance } from './pages/performance.js';
 import { renderActivity } from './pages/activity.js?rev=20260717-inline-activity-filter-v61';
 import { renderSettings } from './pages/settings.js?rev=20260717-installation-flow-v82';
-import { renderEditor, mountEditor } from './pages/editor.js?rev=20260717-theme-settings-entry-v64';
+import { renderEditor, mountEditor } from './pages/editor.js?rev=20260719-reference-checkout-editor-v86';
 import { escapeHtml, formatDateTime, getRouteName, parseRoute, setRoute } from './utils.js';
 import { applyLocale, renderLanguageSwitcher, translate } from './i18n.js?rev=20260717-language-panel-v74';
 
