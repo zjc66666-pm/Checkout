@@ -4,7 +4,7 @@ import {
   FUNNEL_STATUS,
   TRACKING_CONTRACT_VERSION,
 } from './type.js';
-import { createMockBestCheckoutState } from './mock.js?rev=20260717-installation-flow-v82';
+import { createMockBestCheckoutState } from './mock.js?rev=20260719-activity-categories-v88';
 import { buildRuntimePayload, deterministicPayloadHash, graphEdgesForNodes, validateGraphCoverage } from './runtime.js?rev=20260716-rich-audience-v19';
 import { icon } from './components/common.js?rev=20260716-focus-mode-v27';
 import {
@@ -29,14 +29,14 @@ import {
   renderTrackingReviewModal,
   renderTrafficModal,
   renderUnsavedChangesModal,
-} from './components/modals.js?rev=20260719-page-actions-menu-v84';
+} from './components/modals.js?rev=20260719-payment-connect-wizard-v91';
 import { renderHome } from './pages/home.js?rev=20260717-trend-refinement-v81';
 import { renderFunnels } from './pages/funnels.js?rev=20260717-store-state-v77';
 import { renderPages } from './pages/pages.js?rev=20260719-page-actions-menu-v84';
-import { renderPerformance } from './pages/performance.js?rev=20260719-remove-custom-columns-v87';
+import { renderPerformance } from './pages/performance.js?rev=20260719-performance-date-range-v89';
 import { renderActivity } from './pages/activity.js?rev=20260717-inline-activity-filter-v61';
 import { renderSettings } from './pages/settings.js?rev=20260717-installation-flow-v82';
-import { renderEditor, mountEditor } from './pages/editor.js?rev=20260719-reference-checkout-editor-v86';
+import { renderEditor, mountEditor } from './pages/editor.js?rev=20260719-preview-session-v92';
 import { escapeHtml, formatDateTime, getRouteName, parseRoute, setRoute } from './utils.js';
 import { applyLocale, renderLanguageSwitcher, translate } from './i18n.js?rev=20260717-language-panel-v74';
 
@@ -188,7 +188,7 @@ function renderShell(options) {
   appRoot.innerHTML = renderShopifyChrome(pageForRoute(route), route);
   applyLocale(appRoot, state.ui.locale);
   if (isEditorRoute(route)) {
-    mountEditor(appRoot, state, route, { setRoute: setRoute, showToast: showToast, renderShell: renderShell });
+    mountEditor(appRoot, state, route, { setRoute: setRoute, showToast: showToast, renderShell: renderShell, openPreview: openEditorPreview });
   }
   const activeMobileNav = appRoot.querySelector('.mobile-app-nav .app-nav-item.is-active');
   if (window.matchMedia('(max-width: 980px)').matches && activeMobileNav && typeof activeMobileNav.scrollIntoView === 'function') activeMobileNav.scrollIntoView({ block: 'nearest', inline: 'center' });
@@ -230,6 +230,19 @@ function closeModal() {
 
 function activeFunnel() {
   return state.funnels.find(function (item) { return item.id === state.ui.activeFunnelId; }) || state.funnels[0];
+}
+
+function openEditorPreview(context) {
+  const funnel = context.funnel || state.funnels.find(function (item) {
+    return item.nodes.some(function (node) { return node.pageId === context.page.id; });
+  }) || activeFunnel();
+  if (!funnel) {
+    showToast('Create a Funnel before starting a buyer-session preview.', 'info');
+    return;
+  }
+  state.ui.activeFunnelId = funnel.id;
+  state.ui.previewFunnelStep = context.node && context.node.kind ? context.node.kind : 'checkout';
+  openModal(renderFunnelPreviewModal(state, funnel, state.ui.previewFunnelStep));
 }
 
 function buildDeploymentSnapshot(funnel) {
@@ -1091,7 +1104,42 @@ function handleAction(action, element) {
     return;
   }
   if (action === 'connect-provider' || action === 'manage-provider') {
-    openModal(renderConnectProviderModal(state, element.dataset.providerId));
+    state.ui.providerConnectionDraft = null;
+    openModal(renderConnectProviderModal(state, element.dataset.providerId, 'select'));
+    return;
+  }
+  if (action === 'provider-connect-back') {
+    if (element.dataset.providerStep === 'select') state.ui.providerConnectionDraft = null;
+    openModal(renderConnectProviderModal(state, element.dataset.providerId, element.dataset.providerStep));
+    return;
+  }
+  if (action === 'provider-oauth-return') {
+    const draft = state.ui.providerConnectionDraft;
+    if (!draft || draft.providerId !== element.dataset.providerId || draft.authorizationState !== 'authorizing') {
+      showToast('The authorization session is no longer valid. Start again from the provider selection.', 'critical');
+      return;
+    }
+    draft.authorizationState = 'verified';
+    draft.connectionRef = 'provider_connection_' + draft.providerId + '_' + Date.now();
+    draft.merchantAccountRef = 'merchant_' + draft.providerId + '_verified';
+    openModal(renderConnectProviderModal(state, draft.providerId, 'validate'));
+    return;
+  }
+  if (action === 'provider-oauth-denied') {
+    state.ui.providerConnectionDraft = null;
+    openModal(renderConnectProviderModal(state, element.dataset.providerId, 'authorize'));
+    showToast('Provider authorization was not completed. No payment connection was created.', 'info');
+    return;
+  }
+  if (action === 'run-provider-validation') {
+    const draft = state.ui.providerConnectionDraft;
+    if (!draft || draft.providerId !== element.dataset.providerId || draft.authorizationState !== 'verified') {
+      showToast('A verified authorization is required before running connection checks.', 'critical');
+      return;
+    }
+    draft.validationState = 'passed';
+    draft.validatedAt = 'Just now';
+    openModal(renderConnectProviderModal(state, draft.providerId, 'validate'));
     return;
   }
   if (action === 'waitlist-provider') {
@@ -1191,7 +1239,7 @@ function handleAction(action, element) {
     showToast('Changing the domain requires DNS verification before traffic can move.', 'info');
     return;
   }
-  if (action === 'download-mapping-report' || action === 'export-performance' || action === 'export-activity') {
+  if (action === 'download-mapping-report' || action === 'export-activity') {
     showToast('Prototype export prepared. Production generates a signed CSV from the backend.', 'info');
     return;
   }
@@ -1616,30 +1664,110 @@ function bindFormSubmissions(event) {
     showToast('Traffic allocation saved. Phase-aware runtime recovery remains enabled.');
     return;
   }
-  if (form.id === 'connect-provider-form') {
+  if (form.id === 'provider-selection-form') {
     event.preventDefault();
     const data = new FormData(form);
     const provider = state.providers.find(function (item) { return item.id === data.get('providerId'); });
     if (!provider) return;
+    state.ui.providerConnectionDraft = { providerId: provider.id, authorizationState: 'not_started', validationState: 'not_started' };
+    openModal(renderConnectProviderModal(state, provider.id, 'authorize'));
+    return;
+  }
+  if (form.id === 'provider-authorization-form') {
+    event.preventDefault();
+    const data = new FormData(form);
+    const provider = state.providers.find(function (item) { return item.id === data.get('providerId'); });
+    if (!provider) return;
+    const oauth = provider.id === 'stripe' || provider.id === 'paypal';
+    if (oauth) {
+      state.ui.providerConnectionDraft = { providerId: provider.id, mode: 'oauth', authorizationState: 'authorizing', validationState: 'not_started' };
+      openModal(renderConnectProviderModal(state, provider.id, 'authorizing'));
+      return;
+    }
+    const merchantEntity = String(data.get('merchantEntity') || '').trim();
+    const restrictedKey = String(data.get('restrictedKey') || '');
+    if (!merchantEntity || !restrictedKey) {
+      showToast('Enter the required merchant entity and restricted credential before continuing.', 'critical');
+      return;
+    }
+    state.ui.providerConnectionDraft = {
+      providerId: provider.id,
+      mode: 'credential',
+      authorizationState: 'verified',
+      validationState: 'not_started',
+      connectionRef: 'vault_connection_' + provider.id + '_' + Date.now(),
+      merchantAccountRef: merchantEntity,
+      credentialStored: true,
+    };
+    openModal(renderConnectProviderModal(state, provider.id, 'validate'));
+    return;
+  }
+  if (form.id === 'provider-validation-form') {
+    event.preventDefault();
+    const data = new FormData(form);
+    const provider = state.providers.find(function (item) { return item.id === data.get('providerId'); });
+    if (!provider) return;
+    const draft = state.ui.providerConnectionDraft;
+    if (!draft || draft.providerId !== provider.id || draft.authorizationState !== 'verified' || draft.validationState !== 'passed' || !draft.connectionRef || !draft.merchantAccountRef) {
+      showToast('Finish verified authorization and automated connection checks before completing this payment account.', 'critical');
+      return;
+    }
     provider.status = 'Connected';
-    provider.account = 'Secure authorization connected';
+    provider.account = draft.merchantAccountRef;
     provider.connectionCurrency = 'USD';
     provider.postPurchase = provider.postPurchase === 'Not supported' ? 'Not supported' : 'Not evaluated';
-    provider.capabilityCoverage = 'Not evaluated';
+    provider.capabilityCoverage = 'Ready for runtime evaluation';
+    provider.connection = { ref: draft.connectionRef, authorizationState: 'Verified', webhookState: 'Verified', testPaymentState: 'Passed', verifiedAt: draft.validatedAt || 'Just now' };
     provider.capabilityEvaluations = [{
       method: 'Connected methods',
       region: 'Merchant account',
       currency: 'USD',
-      authorizationState: 'Webhook and capability test pending',
+      authorizationState: 'Secure authorization verified',
       outcome: 'Not evaluated',
-      confirmationFlow: 'Not defined',
-      reasonCode: 'secure_authorization_pending_test',
-      verifiedAt: 'Not verified',
+      confirmationFlow: 'Runtime evaluation',
+      reasonCode: 'secure_connection_verified',
+      verifiedAt: 'Just now',
     }];
-    provider.successRate = 'Testing';
+    provider.successRate = '—';
+    const binding = {
+      providerId: provider.id,
+      connectionRef: draft.connectionRef,
+      merchantAccountRef: draft.merchantAccountRef,
+      regions: state.store.targetRegions.slice(),
+      currencies: Array.from(new Set([state.store.checkoutCurrency, 'CAD'])),
+      methods: provider.id === 'paypal' ? ['paypal'] : ['card', 'apple_pay', 'google_pay'],
+      authorizationState: 'Verified',
+      testPaymentState: 'Passed',
+      webhookState: 'Verified',
+      status: 'Verified',
+    };
+    state.funnels.forEach(function (funnel) {
+      const bindings = funnel.paymentRouteBindings || [];
+      const index = bindings.findIndex(function (item) { return item.providerId === provider.id; });
+      if (index >= 0) bindings[index] = binding;
+      else bindings.push(binding);
+      funnel.paymentRouteBindings = bindings;
+      funnel.paymentRouteProviderIds = Array.from(new Set((funnel.paymentRouteProviderIds || []).concat(provider.id)));
+      revalidateFunnel(funnel);
+    });
+    state.activity.unshift({
+      id: 'evt-provider-' + provider.id + '-' + Date.now(),
+      category: 'payment',
+      title: provider.name + ' payment account connected',
+      detail: 'Secure authorization, signed webhook setup and the first payment capability validation completed.',
+      status: 'Succeeded',
+      actor: 'Payment connection service',
+      time: 'Just now',
+      reference: draft.connectionRef,
+      phase: 'provider_connection_verified',
+      attempt: 1,
+      idempotency: 'Verified',
+      integrity: 'Connection reference stored securely; provider credentials are not retained in application logs.',
+    });
+    state.ui.providerConnectionDraft = null;
     closeModal();
     renderShell();
-    showToast(provider.name + ' connected securely. BestCheckout is verifying webhook and payment capability.', 'success');
+    showToast(provider.name + ' connected. Webhook and safe capability checks passed.', 'success');
     return;
   }
   if (form.id === 'tracking-review-form') {
@@ -1748,6 +1876,11 @@ function handleChange(event) {
   }
   if (event.target.matches('[data-change="activity-filter"]')) {
     state.ui.activityFilter = event.target.value;
+    renderShell();
+    return;
+  }
+  if (event.target.matches('[data-change="performance-date-range"]')) {
+    state.ui.performanceDateRange = event.target.value;
     renderShell();
   }
 }

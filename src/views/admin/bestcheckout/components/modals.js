@@ -383,16 +383,71 @@ function renderConnectProviderModalLegacy(state, selectedId) {
   return modalShell('connect-provider', isZh ? '连接支付机构' : 'Connect a payment provider', isZh ? '将已授权的商户账户绑定到托管结账运行时。' : 'Bind an authorized merchant account to the hosted checkout runtime.', body, footer, true);
 }
 
-export function renderConnectProviderModal(state, selectedId) {
-  const selected = selectedId || 'stripe';
+function providerConnectModel(providerId, isZh) {
+  const oauth = providerId === 'stripe' || providerId === 'paypal';
+  if (oauth) return {
+    mode: 'oauth',
+    authorizationTitle: isZh ? '安全授权' : 'Secure authorization',
+    authorizationCopy: isZh ? '将在支付服务商的安全页面完成账户所有权授权。BestCheckout 不会读取或保存登录密码。' : 'Complete merchant-account ownership in the provider’s secure page. BestCheckout never reads or stores login passwords.',
+    launchLabel: isZh ? '打开安全授权页面' : 'Open secure authorization',
+  };
+  return {
+    mode: 'credential',
+    authorizationTitle: isZh ? '最少凭证连接' : 'Minimum credential connection',
+    authorizationCopy: isZh ? '该服务商需要商户实体标识和一枚受限 API 密钥。密钥仅写入连接保险库，不会在页面或日志中再次显示。' : 'This provider requires a merchant entity and one restricted API key. The key goes only to the connection vault and is never displayed in the app or logs.',
+    launchLabel: isZh ? '保存并继续校验' : 'Save and continue to validation',
+  };
+}
+
+function providerConnectStepper(step, isZh) {
+  const currentStep = step === 'authorizing' ? 'authorize' : step;
+  const steps = [
+    ['select', isZh ? '选择服务商' : 'Choose provider'],
+    ['authorize', isZh ? '账户授权' : 'Authorize account'],
+    ['validate', isZh ? '自动校验' : 'Automatic validation'],
+  ];
+  return '<ol class="provider-connect-stepper">' + steps.map(function (item, index) {
+    const state = item[0] === currentStep ? ' is-current' : steps.findIndex(function (entry) { return entry[0] === currentStep; }) > index ? ' is-complete' : '';
+    return '<li class="' + state + '"><span>' + (state === ' is-complete' ? '✓' : index + 1) + '</span><b>' + item[1] + '</b></li>';
+  }).join('') + '</ol>';
+}
+
+export function renderConnectProviderModal(state, selectedId, requestedStep) {
   const isZh = state.ui.locale === 'zh';
   const supported = ['stripe', 'airwallex', 'paypal'];
-  const options = state.providers.filter(function (provider) { return supported.includes(provider.id); }).map(function (provider) {
-    return '<option value="' + escapeHtml(provider.id) + '"' + (provider.id === selected ? ' selected' : '') + '>' + escapeHtml(provider.name) + '</option>';
+  const selected = supported.includes(selectedId) ? selectedId : 'stripe';
+  const provider = state.providers.find(function (item) { return item.id === selected; }) || state.providers[0];
+  const step = ['select', 'authorize', 'authorizing', 'validate'].includes(requestedStep) ? requestedStep : 'select';
+  const model = providerConnectModel(selected, isZh);
+  const connection = state.ui.providerConnectionDraft || {};
+  const options = state.providers.filter(function (item) { return supported.includes(item.id); }).map(function (item) {
+    return '<option value="' + escapeHtml(item.id) + '"' + (item.id === selected ? ' selected' : '') + '>' + escapeHtml(item.name) + '</option>';
   }).join('');
-  const body = '<form id="connect-provider-form" class="form-stack"><label>' + (isZh ? '支付服务商' : 'Payment provider') + '<select name="providerId">' + options + '</select></label><div class="secure-connect-summary"><span>' + icon('shield', 20) + '</span><div><strong>' + (isZh ? '优先使用安全授权' : 'Secure authorization when available') + '</strong><small>' + (isZh ? '系统会根据该服务商能力选择最少步骤的连接方式；如必须使用凭证，只会要求填写必要字段。' : 'BestCheckout selects the lowest-friction supported method. If a credential is required, it asks only for the necessary field.') + '</small></div></div><div class="provider-connect-flow"><div><span>1</span><strong>' + (isZh ? '授权或单项凭证' : 'Authorize or add one credential') + '</strong><small>' + (isZh ? '在支付服务商完成授权，或按提示填写必要凭证。' : 'Authorize at the provider, or enter the required credential.') + '</small></div><div><span>2</span><strong>' + (isZh ? '自动配置' : 'Automatic setup') + '</strong><small>' + (isZh ? 'BestCheckout 创建签名 Webhook 与安全连接引用。' : 'BestCheckout creates the signed webhook and secure connection reference.') + '</small></div><div><span>3</span><strong>' + (isZh ? '自动校验' : 'Automatic validation') + '</strong><small>' + (isZh ? '系统检查支付方式、币种和安全测试。' : 'We check payment methods, currency and a safe test.') + '</small></div></div><details class="advanced-connection-note"><summary>' + (isZh ? '为什么没有 Webhook 配置？' : 'Why is there no webhook setup?') + '</summary><p>' + (isZh ? 'Webhook 端点、签名校验和事件订阅由 BestCheckout 自动完成。商户无需手工配置回调地址。' : 'BestCheckout handles the webhook endpoint, signature verification and event subscriptions automatically. Merchants never configure callback URLs by hand.') + '</p></details></form>';
-  const footer = button(isZh ? '取消' : 'Cancel', 'close-modal') + '<button type="submit" form="connect-provider-form" class="button button-primary">' + (isZh ? '继续连接' : 'Continue connection') + '</button>';
-  return modalShell('connect-provider', isZh ? '连接支付账户' : 'Connect payment account', isZh ? '支付服务商确认账户所有权后，BestCheckout 会完成技术配置和首次校验。' : 'After the provider confirms account ownership, BestCheckout completes technical setup and the first validation.', body, footer, true);
+  let body = '';
+  let footer = '';
+  if (step === 'select') {
+    body = '<form id="provider-selection-form" class="form-stack">' + providerConnectStepper(step, isZh) + '<label>' + (isZh ? '支付服务商' : 'Payment provider') + '<select name="providerId">' + options + '</select><small>' + (isZh ? '选择接收 Checkout 款项的商户账户。下一步会显示该服务商的实际连接方式。' : 'Choose the merchant account that receives Checkout payments. The next step shows its supported connection method.') + '</small></label><div class="secure-connect-summary"><span>' + icon('shield', 20) + '</span><div><strong>' + (isZh ? '优先使用安全授权' : 'Secure authorization when available') + '</strong><small>' + (isZh ? 'Stripe 和 PayPal 使用授权跳转；Airwallex 使用受限凭证。BestCheckout 只要求完成连接所必需的信息。' : 'Stripe and PayPal use an authorization redirect; Airwallex uses restricted credentials. BestCheckout asks only for what is required to establish the connection.') + '</small></div></div><details class="advanced-connection-note"><summary>' + (isZh ? '为什么没有 Webhook 配置？' : 'Why is there no webhook setup?') + '</summary><p>' + (isZh ? 'Webhook 端点、签名校验和事件订阅由 BestCheckout 自动完成。商户无需手工配置回调地址。' : 'BestCheckout handles the webhook endpoint, signature verification and event subscriptions automatically. Merchants never configure callback URLs by hand.') + '</p></details></form>';
+    footer = button(isZh ? '取消' : 'Cancel', 'close-modal') + '<button type="submit" form="provider-selection-form" class="button button-primary">' + (isZh ? '继续' : 'Continue') + '</button>';
+  } else if (step === 'authorize') {
+    const credentialFields = model.mode === 'credential'
+      ? '<label>' + (isZh ? '商户实体 ID' : 'Merchant entity ID') + '<input name="merchantEntity" required placeholder="' + (isZh ? '例如：merchant_us_••••' : 'For example: merchant_us_••••') + '"/></label><label>' + (isZh ? '受限 API 密钥' : 'Restricted API key') + '<input name="restrictedKey" type="password" required autocomplete="off" placeholder="' + (isZh ? '仅用于支付与 Webhook 校验' : 'Used only for payment and webhook validation') + '"/></label>'
+      : '<div class="provider-oauth-card"><span>' + icon('external', 19) + '</span><div><strong>' + escapeHtml(provider.name) + '</strong><small>' + (isZh ? '将在新窗口完成账户选择与授权；返回后继续自动配置。' : 'Choose and authorize the merchant account in a new window, then return for automatic setup.') + '</small></div></div>';
+    body = '<form id="provider-authorization-form" class="form-stack"><input type="hidden" name="providerId" value="' + escapeHtml(selected) + '"/>' + providerConnectStepper(step, isZh) + '<div class="provider-connect-heading"><span class="provider-logo provider-' + escapeHtml(provider.id) + '">' + escapeHtml(provider.name.charAt(0)) + '</span><div><strong>' + escapeHtml(provider.name) + '</strong><small>' + escapeHtml(model.authorizationTitle) + '</small></div></div><div class="secure-connect-summary"><span>' + icon('shield', 20) + '</span><div><strong>' + escapeHtml(model.authorizationTitle) + '</strong><small>' + escapeHtml(model.authorizationCopy) + '</small></div></div>' + credentialFields + '<label class="checkbox-row"><input type="checkbox" name="ownership" required/><span><strong>' + (isZh ? '我确认拥有或已获授权连接此商户账户' : 'I confirm I own or am authorized to connect this merchant account') + '</strong><small>' + (isZh ? '连接后仍会按支付方式、地区和币种做运行时能力判断。' : 'Runtime capability is still evaluated by payment method, region and currency after connection.') + '</small></span></label></form>';
+    const primary = '<button type="submit" form="provider-authorization-form" class="button button-primary">' + escapeHtml(model.launchLabel) + '</button>';
+    footer = '<button type="button" class="button button-secondary" data-action="provider-connect-back" data-provider-id="' + escapeHtml(selected) + '" data-provider-step="select">' + (isZh ? '上一步' : 'Back') + '</button>' + primary;
+  } else if (step === 'authorizing') {
+    body = '<div class="form-stack">' + providerConnectStepper(step, isZh) + '<div class="provider-connect-heading"><span class="provider-logo provider-' + escapeHtml(provider.id) + '">' + escapeHtml(provider.name.charAt(0)) + '</span><div><strong>' + escapeHtml(provider.name) + '</strong><small>' + (isZh ? '正在等待安全授权回调' : 'Waiting for secure authorization callback') + '</small></div></div><div class="provider-pending-card"><span>' + icon('sync', 21) + '</span><div><strong>' + (isZh ? '请在支付服务商页面完成授权' : 'Complete authorization in the provider page') + '</strong><small>' + (isZh ? '生产环境只有在服务商回调携带已验证 state 后，才会进入连接校验。此原型提供成功和拒绝回调的演示路径。' : 'Production proceeds only after the provider callback returns a verified state. This prototype exposes success and denied callback paths for review.') + '</small></div></div></div>';
+    footer = '<button type="button" class="button button-secondary" data-action="provider-oauth-denied" data-provider-id="' + escapeHtml(selected) + '">' + (isZh ? '模拟授权被拒绝' : 'Simulate authorization denied') + '</button><button type="button" class="button button-primary" data-action="provider-oauth-return" data-provider-id="' + escapeHtml(selected) + '">' + (isZh ? '模拟已验证回调' : 'Simulate verified callback') + '</button>';
+  } else {
+    const passed = connection.providerId === selected && connection.validationState === 'passed';
+    const check = function (done, title, copy) {
+      return '<li class="' + (done ? 'is-passed' : 'is-pending') + '"><span>' + (done ? '✓' : '…') + '</span><div><strong>' + title + '</strong><small>' + copy + '</small></div></li>';
+    };
+    const checks = check(connection.providerId === selected && connection.authorizationState === 'verified', isZh ? '账户所有权已确认' : 'Merchant account ownership confirmed', isZh ? '已获得安全连接引用。' : 'A secure connection reference was received.') + check(passed, isZh ? '签名 Webhook 已自动创建' : 'Signed webhook created automatically', isZh ? '支付、退款与失败事件将由服务端验证。' : 'Payment, refund and failure events will be verified on the server.') + check(passed, isZh ? '支付方式与安全测试已通过' : 'Payment methods and safe test passed', isZh ? '具体购后资格仍会在每笔交易时判断。' : 'Post-purchase eligibility will still be evaluated for each transaction.');
+    body = (passed ? '<form id="provider-validation-form" class="form-stack"><input type="hidden" name="providerId" value="' + escapeHtml(selected) + '"/>' : '<div class="form-stack">') + providerConnectStepper(step, isZh) + '<div class="provider-connect-heading"><span class="provider-logo provider-' + escapeHtml(provider.id) + '">' + escapeHtml(provider.name.charAt(0)) + '</span><div><strong>' + escapeHtml(provider.name) + '</strong><small>' + (passed ? (isZh ? '服务端连接校验已通过' : 'Server-side connection checks passed') : (isZh ? '准备运行连接校验' : 'Ready to run connection checks')) + '</small></div></div><ul class="provider-validation-list">' + checks + '</ul><div class="modal-callout"><span>' + icon('shield', 17) + '</span><span><strong>' + (passed ? (isZh ? '连接即将完成' : 'Ready to finish connection') : (isZh ? '校验尚未完成' : 'Validation has not run yet')) + '</strong><small>' + (passed ? (isZh ? '完成后，服务商卡片会显示已连接；密钥不会在 BestCheckout 中显示。' : 'After finishing, the provider card will show Connected. Credentials are never displayed in BestCheckout.') : (isZh ? '生产环境会等待授权、Webhook、测试支付和失败事件处理均返回通过。' : 'Production waits for authorization, webhook, test payment and failure-event handling to pass.')) + '</small></span></div>' + (passed ? '</form>' : '</div>');
+    footer = '<button type="button" class="button button-secondary" data-action="provider-connect-back" data-provider-id="' + escapeHtml(selected) + '" data-provider-step="authorize">' + (isZh ? '上一步' : 'Back') + '</button>' + (passed ? '<button type="submit" form="provider-validation-form" class="button button-primary">' + (isZh ? '完成连接' : 'Finish connection') + '</button>' : '<button type="button" class="button button-primary" data-action="run-provider-validation" data-provider-id="' + escapeHtml(selected) + '">' + (isZh ? '运行自动校验' : 'Run automatic validation') + '</button>');
+  }
+  return modalShell('connect-provider', isZh ? '连接支付账户' : 'Connect payment account', isZh ? '选择服务商、完成账户授权后，BestCheckout 会自动配置并校验支付连接。' : 'Choose a provider, authorize the merchant account, then let BestCheckout configure and validate the connection.', body, footer, true);
 }
 
 export function renderTrackingReviewModal(state) {
