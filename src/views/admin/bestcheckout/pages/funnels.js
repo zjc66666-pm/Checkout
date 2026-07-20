@@ -5,6 +5,18 @@ function copy(state, english, chinese) {
   return state.ui.locale === 'zh' ? chinese : english;
 }
 
+function funnelName(funnel, state) {
+  return funnel.systemCopy
+    ? (state.ui.locale === 'zh' ? funnel.systemCopy.name.zh : funnel.systemCopy.name.en)
+    : funnel.name;
+}
+
+function funnelAudience(funnel, state) {
+  return funnel.systemCopy
+    ? (state.ui.locale === 'zh' ? funnel.systemCopy.audience.zh : funnel.systemCopy.audience.en)
+    : funnel.audience;
+}
+
 function deploymentPinFor(funnel, nodeId) {
   const snapshot = funnel.deploymentSnapshot;
   return snapshot && snapshot.nodes
@@ -59,15 +71,18 @@ function renderGlobalFunnelRouter(state) {
   const routes = state.funnels.slice().sort(function (left, right) { return left.priority - right.priority; });
   const rows = routes.map(function (funnel) {
     const live = funnel.status === 'Live';
-    const routeState = live
+    const routeState = funnel.isDefault
+      ? copy(state, 'Used when no other purchase flow matches', '没有其他购买流程命中时使用')
+      : live
       ? copy(state, 'First matching route wins', '命中后优先进入此漏斗')
       : funnel.status === 'Paused'
         ? copy(state, 'Paused — not receiving traffic', '已暂停 — 暂不接收流量')
         : copy(state, 'Draft — not receiving traffic', '草稿 — 暂不接收流量');
-    return '<button type="button" class="global-funnel-route" data-action="select-funnel" data-funnel-id="' + escapeHtml(funnel.id) + '"><span class="global-funnel-priority">#' + escapeHtml(funnel.priority) + '</span><span class="global-funnel-route-copy"><span><strong data-i18n-skip>' + escapeHtml(funnel.name) + '</strong>' + badge(funnel.status) + '</span><small>' + escapeHtml(routeState) + '</small><em data-i18n-skip>' + escapeHtml(funnel.audience) + '</em></span>' + icon('chevron', 16) + '</button>';
+    const priorityLabel = funnel.isDefault ? copy(state, 'Default', '默认') : '#' + funnel.priority;
+    return '<button type="button" class="global-funnel-route" data-action="select-funnel" data-funnel-id="' + escapeHtml(funnel.id) + '"><span class="global-funnel-priority">' + escapeHtml(priorityLabel) + '</span><span class="global-funnel-route-copy"><span><strong data-i18n-skip>' + escapeHtml(funnelName(funnel, state)) + '</strong>' + badge(funnel.status) + '</span><small>' + escapeHtml(routeState) + '</small><em data-i18n-skip>' + escapeHtml(funnelAudience(funnel, state)) + '</em></span>' + icon('chevron', 16) + '</button>';
   }).join('');
   const fallback = '<article class="global-funnel-fallback"><span>' + icon('store', 17) + '</span><div><small>' + escapeHtml(copy(state, 'Default fallback', '默认兜底')) + '</small><strong>Shopify Checkout</strong><p>' + escapeHtml(copy(state, 'No live Funnel matches → Shopify native Checkout.', '未命中任何已发布漏斗 → Shopify 原生 Checkout。')) + '</p></div></article>';
-  return '<section class="card global-funnel-router"><div class="card-pad"><div class="global-funnel-router-head"><div><span class="eyebrow">' + escapeHtml(copy(state, 'Global Funnel router', '全局漏斗路由')) + '</span><h2>' + escapeHtml(copy(state, 'Which journey does a cart enter?', '购物车最终进入哪一条漏斗？')) + '</h2><p>' + escapeHtml(copy(state, 'Routes are evaluated by priority. A cart enters only the first live Funnel it matches.', '按优先级依次判断；每个购物车只会进入第一个命中的已发布漏斗。')) + '</p></div><span class="global-funnel-router-note">' + icon('flow', 16) + escapeHtml(copy(state, 'Lower number = higher priority', '数值越小，优先级越高')) + '</span></div><div class="global-funnel-router-list">' + rows + fallback + '</div></div></section>';
+  return '<section class="card global-funnel-router"><div class="card-pad"><div class="global-funnel-router-head"><div><span class="eyebrow">' + escapeHtml(copy(state, 'Purchase flow priority', '购买流程优先级')) + '</span><h2>' + escapeHtml(copy(state, 'Which purchase flow does a cart enter?', '购物车会进入哪一条购买流程？')) + '</h2><p>' + escapeHtml(copy(state, 'Purchase flows are checked by priority: a lower number is checked first, and the cart enters the first live purchase flow it matches.', '系统会按优先级判断：数字越小，优先级越高；购物车只会进入第一个匹配的已发布购买流程。')) + '</p></div></div><div class="global-funnel-router-list">' + rows + fallback + '</div></div></section>';
 }
 
 function renderFunnelList(state) {
@@ -81,12 +96,12 @@ function renderFunnelList(state) {
   return '<div class="funnel-index-table" role="table"><div class="funnel-index-header" role="row"><span role="columnheader">' + escapeHtml(copy(state, 'Funnel', '漏斗')) + '</span><span role="columnheader">' + escapeHtml(copy(state, 'Status', '状态')) + '</span><span role="columnheader">' + escapeHtml(copy(state, 'Traffic', '流量')) + '</span><span role="columnheader">' + escapeHtml(copy(state, 'Conversion', '转化率')) + '</span><span role="columnheader">' + escapeHtml(copy(state, 'AOV', '客单价')) + '</span><span role="columnheader">' + escapeHtml(copy(state, 'Updated', '更新时间')) + '</span><span aria-hidden="true"></span></div>' + visible.map(function (funnel) {
     const count = funnelCounts(funnel);
     const pageSummary = state.ui.locale === 'zh'
-      ? count.checkout + ' 个 Checkout · ' + (count.upsell + count.downsell) + ' 个优惠页 · ' + count.thankyou + ' 个 Thank you'
+      ? count.checkout + ' 个 Checkout · ' + (count.upsell + count.downsell) + ' 个优惠页 · ' + count.thankyou + ' 个 Thank you 页面'
       : count.checkout + ' Checkout · ' + (count.upsell + count.downsell) + ' offer pages · ' + count.thankyou + ' Thank you';
     const openLabel = copy(state, 'Open', '打开');
-    const routeSummary = copy(state, 'Priority ', '优先级 #') + funnel.priority + ' · ' + pageSummary;
+    const routeSummary = (funnel.isDefault ? copy(state, 'Default purchase flow', '默认购买流程') : copy(state, 'Priority ', '优先级 #') + funnel.priority) + ' · ' + pageSummary;
     const updatedLabel = funnel.updated === 'Created during installation' ? copy(state, 'Created during installation', '安装时创建') : funnel.updated;
-    return '<div class="funnel-index-row" role="row"><span class="funnel-index-primary" role="cell"><button type="button" data-action="select-funnel" data-funnel-id="' + escapeHtml(funnel.id) + '"><strong data-i18n-skip>' + escapeHtml(funnel.name) + '</strong><small data-i18n-skip>' + escapeHtml(funnel.audience) + '</small><em>' + escapeHtml(routeSummary) + '</em></button></span><span class="funnel-index-status" role="cell">' + badge(funnel.status) + '</span><span class="funnel-index-value" role="cell"><strong>' + escapeHtml(funnel.hostedTraffic + '%') + '</strong><small>BestCheckout</small></span><span class="funnel-index-value" role="cell"><strong>' + escapeHtml(funnel.conversion) + '</strong></span><span class="funnel-index-value" role="cell"><strong>' + escapeHtml(funnel.aov) + '</strong></span><span class="funnel-index-updated" role="cell">' + escapeHtml(updatedLabel) + '</span><span class="funnel-index-action" role="cell"><button type="button" data-action="select-funnel" data-funnel-id="' + escapeHtml(funnel.id) + '" aria-label="' + escapeHtml(openLabel + ' ' + funnel.name) + '"><span>' + escapeHtml(openLabel) + '</span>' + icon('chevron', 16) + '</button></span></div>';
+    return '<div class="funnel-index-row" role="row"><span class="funnel-index-primary" role="cell"><button type="button" data-action="select-funnel" data-funnel-id="' + escapeHtml(funnel.id) + '"><strong data-i18n-skip>' + escapeHtml(funnelName(funnel, state)) + '</strong><small data-i18n-skip>' + escapeHtml(funnelAudience(funnel, state)) + '</small><em>' + escapeHtml(routeSummary) + '</em></button></span><span class="funnel-index-status" role="cell">' + badge(funnel.status) + '</span><span class="funnel-index-value" role="cell"><strong>' + escapeHtml(funnel.hostedTraffic + '%') + '</strong><small>BestCheckout</small></span><span class="funnel-index-value" role="cell"><strong>' + escapeHtml(funnel.conversion) + '</strong></span><span class="funnel-index-value" role="cell"><strong>' + escapeHtml(funnel.aov) + '</strong></span><span class="funnel-index-updated" role="cell">' + escapeHtml(updatedLabel) + '</span><span class="funnel-index-action" role="cell"><button type="button" data-action="select-funnel" data-funnel-id="' + escapeHtml(funnel.id) + '" aria-label="' + escapeHtml(openLabel + ' ' + funnelName(funnel, state)) + '"><span>' + escapeHtml(openLabel) + '</span>' + icon('chevron', 16) + '</button></span></div>';
   }).join('') + '</div>';
 }
 
@@ -96,7 +111,7 @@ function pageMeta(kind) {
     checkout: { icon: 'card', label: 'Checkout page', labelZh: 'Checkout 页面', hint: 'Payment and order review', hintZh: '支付与订单确认' },
     upsell: { icon: 'sparkles', label: 'Upsell page', labelZh: 'Upsell 页面', hint: 'Shown after payment', hintZh: '支付后展示' },
     downsell: { icon: 'sparkles', label: 'Downsell page', labelZh: 'Downsell 页面', hint: 'Shown when an offer is declined', hintZh: '优惠被拒绝时展示' },
-    'thank-you': { icon: 'check', label: 'Thank you page', labelZh: 'Thank you 页面', hint: 'Order confirmation', hintZh: '订单确认' },
+    'thank-you': { icon: 'check', label: 'Thank you page', labelZh: 'Thank you 页面', hint: 'Thank you page', hintZh: 'Thank you 页面' },
   }[kind] || { icon: 'pages', label: 'Journey page', labelZh: '路径页面', hint: '', hintZh: '' };
 }
 
@@ -138,7 +153,7 @@ function renderJourneyNode(node, state, allocation, canRemove) {
       ? '<button type="button" class="journey-page-card-remove" data-action="remove-journey-page" ' + settingsAttrs + ' aria-label="' + escapeHtml(copy(state, 'Remove from Funnel', '从漏斗移除')) + '" title="' + escapeHtml(copy(state, 'Remove from Funnel', '从漏斗移除')) + '">×</button>'
       : '<span class="journey-page-card-required" title="' + escapeHtml(copy(state, 'Keep at least one page of this type in the Funnel.', '漏斗中至少保留一个此类型页面。')) + '">' + icon('lock', 13) + '<span>' + escapeHtml(copy(state, 'Required', '必须保留')) + '</span></span>';
   const actionGroup = '<div class="journey-page-card-actions">' + editAction + '<button type="button" class="journey-page-card-config" data-action="' + settingsAction + '" ' + settingsAttrs + '>' + escapeHtml(settingsLabel) + '</button>' + removal + '</div>';
-  return '<article class="journey-page-card journey-page-card-' + escapeHtml(node.kind) + selected + '"><button type="button" class="journey-page-card-select" data-action="select-node" data-node-id="' + escapeHtml(node.id) + '" aria-pressed="' + (selected ? 'true' : 'false') + '"><span class="journey-page-card-head"><span class="journey-page-card-icon">' + icon(meta.icon, 16) + '</span><span><strong data-i18n-skip>' + escapeHtml(node.label) + '</strong></span></span>' + body + '</button>' + actionGroup + '</article>';
+  return '<article class="journey-page-card journey-page-card-' + escapeHtml(node.kind) + selected + '"><button type="button" class="journey-page-card-select" data-action="select-node" data-node-id="' + escapeHtml(node.id) + '" aria-pressed="' + (selected ? 'true' : 'false') + '"><span class="journey-page-card-head"><span><strong data-i18n-skip>' + escapeHtml(node.label) + '</strong></span></span>' + body + '</button>' + actionGroup + '</article>';
 }
 
 function renderAddPageButton(funnel, state, kind) {
@@ -200,32 +215,34 @@ function renderCheckoutLane(funnel, state, checkouts, routing) {
 
 function renderFunnelEntryOverviewLegacy(funnel, state) {
   const fieldLabels = state.ui.locale === 'zh'
-    ? { customer_type: '新客与老客', logged_in: '登录状态', country: '国家或地区', region: '州或省', city: '城市', customer_language: '客户语言', customer_tag: '客户标签', device: '设备', traffic_source: '流量来源', cart_total: '购物车金额', cart_contains: '购物车包含商品', cart_collection: '购物车包含系列', cart_sku: '购物车包含 SKU', past_orders: '历史订单数', lifetime_value: '客户累计消费' }
-    : { customer_type: 'Customer', logged_in: 'Account', country: 'Market', region: 'Region', city: 'City', customer_language: 'Language', customer_tag: 'Tag', device: 'Device', traffic_source: 'Source', cart_total: 'Cart', cart_contains: 'Cart', cart_collection: 'Collection', cart_sku: 'SKU', past_orders: 'Orders', lifetime_value: 'LTV' };
+    ? { customer_type: '新客与老客', logged_in: '登录状态', country: '国家或地区', region: '州或省', city: '城市', customer_language: '客户语言', customer_tag: '客户标签', device: '设备', traffic_source: '流量来源', cart_total: '购物车金额', cart_contains: '购物车包含商品', cart_collection: '购物车包含系列', cart_sku: '购物车包含 SKU', past_orders: '历史订单数', lifetime_value: '客户累计消费', last_order: '最近一次下单' }
+    : { customer_type: 'Customer', logged_in: 'Account', country: 'Market', region: 'Region', city: 'City', customer_language: 'Language', customer_tag: 'Tag', device: 'Device', traffic_source: 'Source', cart_total: 'Cart', cart_contains: 'Cart', cart_collection: 'Collection', cart_sku: 'SKU', past_orders: 'Orders', lifetime_value: 'LTV', last_order: 'Last order' };
   const operatorLabels = state.ui.locale === 'zh'
     ? { is: '是', is_not: '不是', one_of: '属于任一项', not_one_of: '不属于任一项', equals: '等于', not_equal: '不等于', at_least: '至少为', at_most: '至多为', between: '介于', contains: '包含', does_not_contain: '不包含', within_last: '最近', more_than_ago: '早于' }
     : { is: 'is', is_not: 'is not', one_of: 'is one of', not_one_of: 'is not one of', equals: 'equals', not_equal: 'does not equal', at_least: 'at least', at_most: 'at most', between: 'between', contains: 'contains', does_not_contain: 'does not contain', within_last: 'within', more_than_ago: 'before' };
   const conditions = (funnel.audienceConditions || []).map(function (rule) {
     const field = rule.shortLabel || rule.fieldLabel || fieldLabels[rule.field] || rule.field || '';
     const operator = rule.operatorLabel || operatorLabels[rule.operator] || rule.operator || '';
-    const text = field + ' ' + operator + ' ' + (rule.value || '');
+    const value = rule.field === 'last_order' && /^[1-9]\d*$/.test(String(rule.value || '')) ? String(rule.value) + (state.ui.locale === 'zh' ? ' 天' : ' days') : (rule.value || '');
+    const text = field + ' ' + operator + ' ' + value;
     return '<span data-i18n-skip>' + escapeHtml(text) + '</span>';
-  }).join('') || '<span data-i18n-skip>' + escapeHtml(funnel.audience) + '</span>';
+  }).join('') || '<span data-i18n-skip>' + escapeHtml(funnelAudience(funnel, state)) + '</span>';
   return '<section class="funnel-entry-overview"><header><div><span class="eyebrow">' + escapeHtml(copy(state, 'Layer 1: Funnel routing', '第 1 层：漏斗路由')) + '</span><h2>' + escapeHtml(copy(state, 'Who enters this Funnel?', '哪些用户进入此漏斗？')) + '</h2><p>' + escapeHtml(copy(state, 'Set the eligible audience once for the whole journey. Templates are chosen later by the Checkout experiment.', '整条购买路径只配置一次准入用户；进入后才由 Checkout 实验决定使用哪个模板。')) + '</p></div><button type="button" class="button button-secondary" data-action="edit-funnel-entry" data-funnel-id="' + escapeHtml(funnel.id) + '">' + icon('settings', 16) + '<span>' + escapeHtml(copy(state, 'Configure entry', '配置漏斗入口')) + '</span></button></header><div class="funnel-entry-overview-grid"><article><span class="funnel-entry-overview-icon">' + icon('user', 18) + '</span><div><small>' + escapeHtml(copy(state, 'Eligible buyers', '符合条件的买家')) + '</small><strong>' + escapeHtml(copy(state, 'All conditions must match', '须同时满足全部条件')) + '</strong><div class="funnel-entry-rule-chips">' + conditions + '</div></div></article><article><span class="funnel-entry-overview-icon funnel-entry-priority-icon">' + icon('flow', 18) + '</span><div><small>' + escapeHtml(copy(state, 'Funnel priority', '漏斗优先级')) + '</small><strong>' + escapeHtml(copy(state, 'Priority #', '优先级 #') + funnel.priority) + '</strong><p>' + escapeHtml(copy(state, 'If several Funnels match, this order decides which journey runs.', '若多个漏斗同时命中，优先级更高的路径先执行。')) + '</p></div></article><article><span class="funnel-entry-overview-icon funnel-entry-fallback-icon">' + icon('store', 18) + '</span><div><small>' + escapeHtml(copy(state, 'Safety fallback', '默认安全兜底')) + '</small><strong>Shopify Checkout</strong><p>' + escapeHtml(copy(state, 'No Funnel match → Shopify native Checkout.', '未命中任何漏斗 → Shopify 原生 Checkout。')) + '</p></div></article></div></section>';
 }
 
 function renderFunnelEntryOverview(funnel, state) {
   const fieldLabels = state.ui.locale === 'zh'
-    ? { customer_type: '客户', logged_in: '账户', country: '国家/地区', region: '地区', city: '城市', customer_language: '语言', customer_tag: '客户标签', device: '设备', traffic_source: '来源', cart_total: '购物车', cart_contains: '购物车商品', cart_collection: '商品系列', cart_sku: 'SKU', past_orders: '历史订单', lifetime_value: '累计消费' }
-    : { customer_type: 'Customer', logged_in: 'Account', country: 'Market', region: 'Region', city: 'City', customer_language: 'Language', customer_tag: 'Tag', device: 'Device', traffic_source: 'Source', cart_total: 'Cart', cart_contains: 'Cart', cart_collection: 'Collection', cart_sku: 'SKU', past_orders: 'Orders', lifetime_value: 'LTV' };
+    ? { customer_type: '客户', logged_in: '账户', country: '国家/地区', region: '地区', city: '城市', customer_language: '语言', customer_tag: '客户标签', device: '设备', traffic_source: '来源', cart_total: '购物车', cart_contains: '购物车商品', cart_collection: '商品系列', cart_sku: 'SKU', past_orders: '历史订单', lifetime_value: '累计消费', last_order: '最近一次下单' }
+    : { customer_type: 'Customer', logged_in: 'Account', country: 'Market', region: 'Region', city: 'City', customer_language: 'Language', customer_tag: 'Tag', device: 'Device', traffic_source: 'Source', cart_total: 'Cart', cart_contains: 'Cart', cart_collection: 'Collection', cart_sku: 'SKU', past_orders: 'Orders', lifetime_value: 'LTV', last_order: 'Last order' };
   const operatorLabels = state.ui.locale === 'zh'
     ? { is: '是', is_not: '不是', one_of: '属于任一项', not_one_of: '不属于任一项', equals: '等于', not_equal: '不等于', at_least: '至少', at_most: '至多', between: '介于', contains: '包含', does_not_contain: '不包含', within_last: '最近', more_than_ago: '早于' }
     : { is: 'is', is_not: 'is not', one_of: 'is one of', not_one_of: 'is not one of', equals: 'equals', not_equal: 'does not equal', at_least: 'at least', at_most: 'at most', between: 'between', contains: 'contains', does_not_contain: 'does not contain', within_last: 'within', more_than_ago: 'before' };
   const conditions = (funnel.audienceConditions || []).map(function (rule) {
     const field = rule.shortLabel || rule.fieldLabel || fieldLabels[rule.field] || rule.field || '';
     const operator = rule.operatorLabel || operatorLabels[rule.operator] || rule.operator || '';
-    return '<span data-i18n-skip>' + escapeHtml(field + ' ' + operator + ' ' + (rule.value || '')) + '</span>';
-  }).join('') || '<span data-i18n-skip>' + escapeHtml(funnel.audience) + '</span>';
+    const value = rule.field === 'last_order' && /^[1-9]\d*$/.test(String(rule.value || '')) ? String(rule.value) + (state.ui.locale === 'zh' ? ' 天' : ' days') : (rule.value || '');
+    return '<span data-i18n-skip>' + escapeHtml(field + ' ' + operator + ' ' + value) + '</span>';
+  }).join('') || '<span data-i18n-skip>' + escapeHtml(funnelAudience(funnel, state)) + '</span>';
   return '<section class="funnel-entry-summary"><span class="funnel-entry-summary-icon">' + icon('user', 17) + '</span><div class="funnel-entry-summary-audience"><small>' + escapeHtml(copy(state, 'Funnel entry', '漏斗入口')) + '</small><div class="funnel-entry-rule-chips">' + conditions + '</div></div><div class="funnel-entry-summary-meta"><small>' + escapeHtml(copy(state, 'Priority', '优先级')) + '</small><strong>#' + escapeHtml(funnel.priority) + '</strong></div><div class="funnel-entry-summary-fallback"><span>' + icon('store', 15) + '</span><small>' + escapeHtml(copy(state, 'Other buyers → Shopify Checkout', '其他买家 → Shopify Checkout')) + '</small></div><button type="button" class="button button-plain" data-action="edit-funnel-entry" data-funnel-id="' + escapeHtml(funnel.id) + '">' + icon('settings', 15) + '<span>' + escapeHtml(copy(state, 'Edit entry', '编辑入口')) + '</span></button></section>';
 }
 
@@ -299,6 +316,7 @@ function renderInspector(funnel, state) {
 
 function renderDetailHeader(funnel, state) {
   const staleDeployment = deploymentIsStale(funnel, state);
+  const isStandardFlow = funnel.id === 'funnel-default';
   let actions = button(copy(state, 'Preview journey', '预览路径'), 'preview-funnel', { icon: 'play' });
   if (funnel.status === 'Live') {
     actions += button(copy(state, 'Pause traffic', '暂停流量'), 'pause-funnel', { kind: 'secondary', icon: 'pause', attrs: 'data-funnel-id="' + escapeHtml(funnel.id) + '"' });
@@ -306,9 +324,9 @@ function renderDetailHeader(funnel, state) {
   } else if (funnel.status === 'Paused') {
     actions += button(copy(state, 'Resume last deployment', '恢复上次发布'), 'resume-last-deployment', { kind: staleDeployment ? 'secondary' : 'primary', icon: 'play', attrs: 'data-funnel-id="' + escapeHtml(funnel.id) + '"' });
   } else {
-    actions += button(copy(state, 'Publish Funnel', '发布漏斗'), 'publish-funnel', { kind: 'primary', icon: 'play', attrs: 'data-funnel-id="' + escapeHtml(funnel.id) + '"' });
+    actions += button(copy(state, isStandardFlow ? 'Enable standard purchase flow' : 'Publish Funnel', isStandardFlow ? '开启标准购买流程' : '发布漏斗'), 'publish-funnel', { kind: 'primary', icon: 'play', attrs: 'data-funnel-id="' + escapeHtml(funnel.id) + '"' });
   }
-  return pageHeader(funnel.name, funnel.audience, actions, [{ label: copy(state, 'Funnels', '漏斗'), route: 'funnels' }, { label: funnel.name }]);
+  return pageHeader(funnelName(funnel, state), funnelAudience(funnel, state), actions, [{ label: copy(state, 'Funnels', '漏斗'), route: 'funnels' }, { label: funnelName(funnel, state) }]);
 }
 
 function renderMoreSettings(funnel, state) {
@@ -317,7 +335,8 @@ function renderMoreSettings(funnel, state) {
     return '<div class="guardrail-row"><span>' + escapeHtml(label) + '</span>' + badge(funnel.guardrails[key]) + '</div>';
   }).join('');
   const routing = '<div class="card"><div class="card-pad">' + sectionHeader(copy(state, 'Who enters this Funnel', '哪些用户进入此漏斗'), copy(state, 'All listed conditions must match.', '须同时满足以下所有条件。'), button(copy(state, 'Edit rules', '编辑规则'), 'edit-rules', { kind: 'plain' })) + '<ol class="rule-list">' + funnel.rules.map(function (rule, index) { return '<li><span>' + (index + 1) + '</span><strong data-i18n-skip>' + escapeHtml(rule) + '</strong></li>'; }).join('') + '</ol></div></div>';
-  const status = '<aside class="card"><div class="card-pad">' + sectionHeader(copy(state, 'Ready to publish', '发布准备情况'), copy(state, 'Checks run again whenever you publish.', '每次发布时都会重新检查。')) + '<div class="guardrail-list">' + guardrails + '</div><button type="button" class="button button-secondary button-block" data-route="settings?tab=diagnostics">' + escapeHtml(copy(state, 'Review store status', '查看店铺状态')) + '</button></div></aside>';
+  const isStandardFlow = funnel.id === 'funnel-default';
+  const status = '<aside class="card"><div class="card-pad">' + sectionHeader(copy(state, isStandardFlow ? 'Ready to enable' : 'Ready to publish', isStandardFlow ? '开启前检查' : '发布准备情况'), copy(state, isStandardFlow ? 'Complete the required setup, then enable this flow for all eligible shoppers.' : 'Checks run again whenever you publish.', isStandardFlow ? '完成必要设置后，即可为所有符合条件的买家开启这条购买流程。' : '每次发布时都会重新检查。')) + '<div class="guardrail-list">' + guardrails + '</div><button type="button" class="button button-secondary button-block" data-route="settings?tab=diagnostics">' + escapeHtml(copy(state, 'Review store status', '查看店铺状态')) + '</button></div></aside>';
   return '<details class="funnel-advanced"><summary><span>' + icon('settings', 17) + '<strong>' + escapeHtml(copy(state, 'More settings', '更多设置')) + '</strong><small>' + escapeHtml(copy(state, 'Audience, traffic and publishing', '受众、流量与发布')) + '</small></span>' + icon('chevron', 16) + '</summary><section class="funnel-lower-grid">' + routing + status + '</section></details>';
 }
 

@@ -1,5 +1,5 @@
 import { badge, button, icon } from './common.js';
-import { getSetupReadiness } from '../readiness.js?rev=20260717-system-readiness-v68';
+import { getSetupReadiness } from '../readiness.js?rev=20260719-optional-growth-v105';
 import { escapeHtml } from '../utils.js';
 
 function modalShell(id, title, subtitle, body, footer, wide) {
@@ -23,17 +23,17 @@ function createFunnelAudiencePresets(isZh) {
       availability: isZh ? '实时可用' : 'Available at handoff',
     },
     {
-      id: 'market_device', icon: 'globe',
-      title: isZh ? '按市场与设备' : 'Market and device',
-      copy: isZh ? '按国家/地区、语言、设备或浏览器展示不同的结账体验。' : 'Tailor the checkout by market, language, device, or browser.',
-      rule: isZh ? '国家/地区 ∈ 美国、加拿大' : 'Market ∈ US, CA',
+      id: 'storefront_context', icon: 'globe',
+      title: isZh ? '按当前市场与语言' : 'Storefront market and language',
+      copy: isZh ? '按买家当前在店铺中选择的国家/市场或语言展示不同体验。' : 'Tailor the journey to the country, market, or language currently selected on the storefront.',
+      rule: isZh ? '店铺当前国家/市场 是 美国' : 'Current storefront country is United States',
       availability: isZh ? '实时可用' : 'Available at handoff',
     },
     {
-      id: 'campaign', icon: 'analytics',
-      title: isZh ? '按广告与落地页' : 'Campaign and landing page',
-      copy: isZh ? '将广告活动、UTM、点击 ID 或落地页流量送入专属路径。' : 'Route campaign, UTM, click-ID, or landing-page traffic.',
-      rule: isZh ? 'UTM 来源包含 facebook' : 'UTM source contains facebook',
+      id: 'specific_product', icon: 'products',
+      title: isZh ? '按购物车商品' : 'Cart product',
+      copy: isZh ? '让包含指定商品或 SKU 的购物车进入专属购买流程。' : 'Route carts containing a selected product or SKU into a dedicated purchase flow.',
+      rule: isZh ? '购物车包含商品 Nighttime Gummies' : 'Cart contains Nighttime Gummies',
       availability: isZh ? '实时可用' : 'Available at handoff',
     },
     {
@@ -47,7 +47,7 @@ function createFunnelAudiencePresets(isZh) {
     {
       id: 'custom', icon: 'settings',
       title: isZh ? '自定义组合' : 'Custom combination',
-      copy: isZh ? '先创建草稿，再把客户、投放、购物车和订单条件组合成 AND 规则。' : 'Create a draft, then combine customer, campaign, cart, and order rules.',
+      copy: isZh ? '先创建草稿，再组合客户身份、店铺上下文与购物车条件。' : 'Create a draft, then combine customer identity, storefront context, and cart rules.',
       rule: isZh ? '从“购物车商品数 ≥ 1”开始' : 'Start with cart items ≥ 1',
       availability: isZh ? '创建后配置' : 'Configure after creation',
     },
@@ -83,7 +83,7 @@ export function renderCreateFunnelModal(step, wizard, locale) {
     const badgeClass = preset.restricted ? ' is-restricted' : preset.recommended ? ' is-recommended' : '';
     return '<label class="audience-starter-card' + selectedClass + '"><input type="radio" name="audiencePreset" value="' + escapeHtml(preset.id) + '"' + selected + '/><span class="audience-starter-icon">' + icon(preset.icon, 18) + '</span><span class="audience-starter-copy"><span><strong>' + escapeHtml(preset.title) + '</strong>' + (preset.recommended ? '<em>' + escapeHtml(isZh ? '推荐' : 'Recommended') + '</em>' : '') + '</span><small>' + escapeHtml(preset.copy) + '</small><code>' + escapeHtml(preset.rule) + '</code><i class="audience-starter-availability' + badgeClass + '">' + escapeHtml(preset.availability) + '</i></span></label>';
   }).join('');
-  const audienceChooser = '<fieldset class="audience-starter-fieldset"><legend>' + escapeHtml(isZh ? '哪些买家进入这个漏斗？' : 'Who enters this Funnel?') + '</legend><p>' + escapeHtml(isZh ? '先选择最接近的起始条件。创建后仍可在“配置漏斗入口”中叠加更多 AND 条件。' : 'Choose the closest starting rule. You can add more AND conditions under Configure Funnel entry after creation.') + '</p><div class="audience-starter-grid">' + audienceCards + '</div></fieldset><section class="audience-capability-note"><span>' + icon('shield', 17) + '</span><div><strong>' + escapeHtml(isZh ? '本次路由可用的数据' : 'Data available for this routing decision') + '</strong><p>' + escapeHtml(isZh ? '购物车金额、商品/SKU/系列、优惠码、市场/语言/设备、落地页、UTM、引荐域名与广告点击 ID。' : 'Cart totals, products/SKUs/collections, discount codes, market/language/device, landing page, UTM, referrer, and ad click ID.') + '</p><small>' + escapeHtml(isZh ? '客户标签、购买历史和累计消费只会用于已携带 Shopify 客户身份的买家；其他访客不命中时将回退到 Shopify Checkout。' : 'Customer tags, order history, and lifetime value apply only when the handoff includes a Shopify customer identity. Other visitors fall back to Shopify Checkout.') + '</small></div></section>';
+  const audienceChooser = '<fieldset class="audience-starter-fieldset"><legend>' + escapeHtml(isZh ? '哪些买家进入这个漏斗？' : 'Who enters this Funnel?') + '</legend><p>' + escapeHtml(isZh ? '先选择最接近的起始条件。创建后仍可在“配置漏斗入口”中叠加更多 AND 条件。' : 'Choose the closest starting rule. You can add more AND conditions under Configure Funnel entry after creation.') + '</p><div class="audience-starter-grid">' + audienceCards + '</div></fieldset><section class="audience-capability-note"><span>' + icon('shield', 17) + '</span><div><strong>' + escapeHtml(isZh ? '本次路由可用的数据' : 'Data available for this routing decision') + '</strong><p>' + escapeHtml(isZh ? '购物车金额、币种、商品数、商品与 SKU，以及店铺当前国家/市场和语言。' : 'Cart totals, currency, item count, products and SKUs, plus the current storefront country, market, and language.') + '</p><small>' + escapeHtml(isZh ? '客户标签、营销订阅、订单数、累计消费和最近订单仅在买家已登录 Shopify 客户账号时可用；其他访客不命中时将回退到 Shopify Checkout。' : 'Customer tags, marketing consent, order count, lifetime spend, and last order are available only for signed-in Shopify customers. Other visitors fall back to Shopify Checkout.') + '</small></div></section>';
   const body = progress + '<form id="create-funnel-form" class="form-stack"><input type="hidden" name="path" value="' + escapeHtml(selectedPath) + '"/><div class="journey-summary"><span class="journey-summary-icon">' + icon('flow', 19) + '</span><div><small>' + escapeHtml(isZh ? '起始路径' : 'Starting journey') + '</small><strong>' + escapeHtml(selectedGoal.title) + '</strong><code>' + escapeHtml(selectedGoal.path) + '</code></div></div><label>' + escapeHtml(isZh ? '漏斗名称' : 'Funnel name') + '<input type="text" name="name" value="' + escapeHtml(defaultName) + '" required /></label>' + audienceChooser + '<div class="auto-setup-list"><span>' + icon('check', 15) + '<b>' + escapeHtml(isZh ? '自动选择 Checkout 和 Thank you 页面' : 'Checkout and Thank-you pages selected automatically') + '</b></span><span>' + icon('check', 15) + '<b>' + escapeHtml(isZh ? 'Shopify 原生 Checkout 始终作为兜底' : 'Shopify native fallback stays on') + '</b></span><span>' + icon('check', 15) + '<b>' + escapeHtml(isZh ? '发布前初始流量保持为 0%' : 'Initial traffic stays at 0% until publish') + '</b></span></div></form>';
   const footer = button(isZh ? '返回' : 'Back', 'back-create-funnel') + '<button type="submit" form="create-funnel-form" class="button button-primary">' + escapeHtml(isZh ? '创建漏斗草稿' : 'Create draft Funnel') + '</button>';
   return modalShell('create-funnel', isZh ? '为漏斗命名' : 'Name the Funnel', isZh ? '选择谁会进入此路径。之后仍可进一步添加规则。' : 'Choose who enters this journey. You can refine the rules afterward.', body, footer, true);
@@ -214,51 +214,30 @@ export function renderCheckoutRoutingModal(state, funnel) {
 
 const AUDIENCE_FIELD_GROUPS = [
   {
-    label: 'Customer profile', labelZh: '用户画像', fields: [
-      { id: 'customer_type', label: 'New vs returning', labelZh: '新客与老客', placeholder: 'New customer', placeholderZh: '新客户', short: 'Customer', shortZh: '客户', operators: 'match' },
-      { id: 'logged_in', label: 'Signed-in status', labelZh: '登录状态', placeholder: 'Signed in', placeholderZh: '已登录', short: 'Account', shortZh: '账号', operators: 'match' },
-      { id: 'country', label: 'Country or region', labelZh: '国家或地区', placeholder: 'United States, Canada', placeholderZh: '美国、加拿大', short: 'Market', shortZh: '市场', operators: 'match' },
-      { id: 'region', label: 'State or province', labelZh: '州或省', placeholder: 'California', placeholderZh: '加利福尼亚州', short: 'Region', shortZh: '州省', operators: 'match' },
-      { id: 'city', label: 'City', labelZh: '城市', placeholder: 'Los Angeles', placeholderZh: '洛杉矶', short: 'City', shortZh: '城市', operators: 'match' },
-      { id: 'customer_language', label: 'Customer language', labelZh: '客户语言', placeholder: 'English', placeholderZh: '英语', short: 'Language', shortZh: '语言', operators: 'match' },
-      { id: 'customer_tag', label: 'Customer tag', labelZh: '客户标签', placeholder: 'VIP', placeholderZh: 'VIP', short: 'Tag', shortZh: '标签', operators: 'text' },
+    label: 'Customer identity', labelZh: '客户身份（登录后可用）', fields: [
+      { id: 'logged_in', label: 'Account status', labelZh: '登录状态', placeholder: 'Signed in', placeholderZh: '已登录', short: 'Account', shortZh: '账号', operators: 'match' },
+      { id: 'customer_type', label: 'First order or returning', labelZh: '首单或复购（需登录）', placeholder: 'New customer', placeholderZh: '新客户', short: 'Customer', shortZh: '客户', operators: 'match' },
+      { id: 'customer_tag', label: 'Customer tags', labelZh: '客户标签', placeholder: 'VIP', placeholderZh: 'VIP', short: 'Tags', shortZh: '标签', operators: 'tags' },
       { id: 'marketing_consent', label: 'Email marketing consent', labelZh: '邮件营销订阅', placeholder: 'Subscribed', placeholderZh: '已订阅', short: 'Consent', shortZh: '订阅', operators: 'match' },
+      { id: 'past_orders', label: 'Past orders', labelZh: '历史订单数', placeholder: '1', placeholderZh: '1', short: 'Orders', shortZh: '订单', operators: 'number', valueKind: 'integer', defaultOperator: 'at_least' },
+      { id: 'lifetime_value', label: 'Customer lifetime spend', labelZh: '客户累计消费', placeholder: '$200', placeholderZh: '$200', short: 'LTV', shortZh: '累计消费', operators: 'number', valueKind: 'money', defaultOperator: 'at_least' },
+      { id: 'last_order', label: 'Last order date', labelZh: '最近一次下单', placeholder: '30', placeholderZh: '30', short: 'Last order', shortZh: '最近一次下单', operators: 'date', valueKind: 'days', defaultOperator: 'within_last' },
     ],
   },
   {
-    label: 'Checkout session', labelZh: '访问与投放', fields: [
-      { id: 'device', label: 'Device', labelZh: '设备', placeholder: 'Mobile', placeholderZh: '移动设备', short: 'Device', shortZh: '设备', operators: 'match' },
-      { id: 'browser', label: 'Browser', labelZh: '浏览器', placeholder: 'Safari', placeholderZh: 'Safari', short: 'Browser', shortZh: '浏览器', operators: 'match' },
-      { id: 'traffic_source', label: 'Traffic source', labelZh: '流量来源', placeholder: 'Meta Ads', placeholderZh: 'Meta Ads', short: 'Source', shortZh: '来源', operators: 'match' },
-      { id: 'referrer_domain', label: 'Referrer domain', labelZh: '引荐域名', placeholder: 'facebook.com', placeholderZh: 'facebook.com', short: 'Referrer', shortZh: '引荐', operators: 'text' },
-      { id: 'entry_page', label: 'Landing page URL', labelZh: '落地页地址', placeholder: '/products/sleep-reset', placeholderZh: '/products/sleep-reset', short: 'Landing', shortZh: '落地页', operators: 'text' },
-      { id: 'utm_source', label: 'UTM source', labelZh: 'UTM 来源', placeholder: 'facebook', placeholderZh: 'facebook', short: 'UTM source', shortZh: 'UTM 来源', operators: 'text' },
-      { id: 'utm_medium', label: 'UTM medium', labelZh: 'UTM 媒介', placeholder: 'paid_social', placeholderZh: 'paid_social', short: 'UTM medium', shortZh: 'UTM 媒介', operators: 'text' },
-      { id: 'utm_campaign', label: 'UTM campaign', labelZh: 'UTM 广告系列', placeholder: 'summer_launch', placeholderZh: 'summer_launch', short: 'Campaign', shortZh: '广告系列', operators: 'text' },
-      { id: 'utm_content', label: 'UTM content', labelZh: 'UTM 内容', placeholder: 'video_a', placeholderZh: 'video_a', short: 'Content', shortZh: '内容', operators: 'text' },
-      { id: 'click_id', label: 'Ad click ID', labelZh: '广告点击 ID', placeholder: 'fbclid or gclid', placeholderZh: 'fbclid 或 gclid', short: 'Click ID', shortZh: '点击 ID', operators: 'text' },
+    label: 'Storefront context', labelZh: '店铺当前上下文', fields: [
+      { id: 'country', label: 'Current storefront country', labelZh: '店铺当前国家/市场', placeholder: 'United States', placeholderZh: '美国', short: 'Market', shortZh: '市场', operators: 'match' },
+      { id: 'customer_language', label: 'Current storefront language', labelZh: '店铺当前语言', placeholder: 'English', placeholderZh: '英语', short: 'Language', shortZh: '语言', operators: 'match' },
     ],
   },
   {
     label: 'Cart', labelZh: '购物车', fields: [
-      { id: 'cart_subtotal', label: 'Cart subtotal', labelZh: '商品小计', placeholder: '$60', placeholderZh: '$60', short: 'Subtotal', shortZh: '小计', operators: 'number' },
-      { id: 'cart_total', label: 'Cart total', labelZh: '购物车金额', placeholder: '$60', placeholderZh: '$60', short: 'Cart', shortZh: '购物车', operators: 'number' },
+      { id: 'cart_subtotal', label: 'Cart subtotal', labelZh: '商品小计', placeholder: '$60', placeholderZh: '$60', short: 'Subtotal', shortZh: '小计', operators: 'number', valueKind: 'money', defaultOperator: 'at_least' },
+      { id: 'cart_total', label: 'Cart total', labelZh: '购物车金额', placeholder: '$60', placeholderZh: '$60', short: 'Cart', shortZh: '购物车', operators: 'number', valueKind: 'money', defaultOperator: 'at_least' },
       { id: 'cart_currency', label: 'Cart currency', labelZh: '购物车币种', placeholder: 'USD', placeholderZh: 'USD', short: 'Currency', shortZh: '币种', operators: 'match' },
-      { id: 'cart_items', label: 'Cart item count', labelZh: '购物车商品数', placeholder: '2', placeholderZh: '2', short: 'Items', shortZh: '商品数', operators: 'number' },
-      { id: 'cart_contains', label: 'Cart contains product', labelZh: '购物车包含商品', placeholder: 'Nighttime Gummies', placeholderZh: 'Nighttime Gummies', short: 'Cart', shortZh: '购物车', operators: 'text' },
-      { id: 'cart_collection', label: 'Cart contains collection', labelZh: '购物车包含系列', placeholder: 'Sleep Essentials', placeholderZh: 'Sleep Essentials', short: 'Collection', shortZh: '商品系列', operators: 'text' },
+      { id: 'cart_items', label: 'Cart item count', labelZh: '购物车商品数', placeholder: '2', placeholderZh: '2', short: 'Items', shortZh: '商品数', operators: 'number', valueKind: 'integer', defaultOperator: 'at_least' },
+      { id: 'cart_contains', label: 'Cart products', labelZh: '购物车商品', placeholder: '', placeholderZh: '', short: 'Products', shortZh: '商品', operators: 'products', valueKind: 'products', defaultOperator: 'contains_any_product' },
       { id: 'cart_sku', label: 'Cart contains SKU', labelZh: '购物车包含 SKU', placeholder: 'SLEEP-STARTER', placeholderZh: 'SLEEP-STARTER', short: 'SKU', shortZh: 'SKU', operators: 'text' },
-      { id: 'discount_code', label: 'Discount code', labelZh: '优惠码', placeholder: 'WELCOME10', placeholderZh: 'WELCOME10', short: 'Code', shortZh: '优惠码', operators: 'text' },
-      { id: 'cart_age', label: 'Cart age (minutes)', labelZh: '购物车停留时长（分钟）', placeholder: '15', placeholderZh: '15', short: 'Cart age', shortZh: '停留时长', operators: 'number' },
-    ],
-  },
-  {
-    label: 'Order history', labelZh: '订单历史', fields: [
-      { id: 'past_orders', label: 'Past orders', labelZh: '历史订单数', placeholder: '1', placeholderZh: '1', short: 'Orders', shortZh: '订单', operators: 'number' },
-      { id: 'lifetime_value', label: 'Customer lifetime spend', labelZh: '客户累计消费', placeholder: '$200', placeholderZh: '$200', short: 'LTV', shortZh: '累计消费', operators: 'number' },
-      { id: 'last_order', label: 'Last order date', labelZh: '最近一次下单', placeholder: '30 days', placeholderZh: '30 天', short: 'Last order', shortZh: '最近订单', operators: 'date' },
-      { id: 'customer_since', label: 'Customer since', labelZh: '成为客户时长', placeholder: '90 days', placeholderZh: '90 天', short: 'Customer since', shortZh: '客户时长', operators: 'date' },
-      { id: 'purchased_product', label: 'Purchased product', labelZh: '已购买商品', placeholder: 'Sleep Reset Starter Kit', placeholderZh: 'Sleep Reset Starter Kit', short: 'Purchased', shortZh: '已购买', operators: 'text' },
     ],
   },
 ];
@@ -275,16 +254,67 @@ const AUDIENCE_OPERATORS = [
   { id: 'between', label: 'is between', labelZh: '介于' },
   { id: 'contains', label: 'contains', labelZh: '包含' },
   { id: 'does_not_contain', label: 'does not contain', labelZh: '不包含' },
+  { id: 'contains_any_tag', label: 'has any of these tags', labelZh: '包含任一标签' },
+  { id: 'contains_all_tags', label: 'has all of these tags', labelZh: '包含全部标签' },
+  { id: 'contains_none_tags', label: 'has none of these tags', labelZh: '不包含这些标签' },
+  { id: 'contains_any_product', label: 'includes any selected product', labelZh: '包含任一所选商品' },
+  { id: 'contains_all_products', label: 'includes all selected products', labelZh: '同时包含全部所选商品' },
+  { id: 'contains_none_products', label: 'does not include selected products', labelZh: '不包含所选商品' },
   { id: 'within_last', label: 'is in the last', labelZh: '在最近…内' },
   { id: 'more_than_ago', label: 'is more than … ago', labelZh: '早于…前' },
 ];
 
 const AUDIENCE_OPERATOR_SETS = {
-  match: ['is', 'is_not', 'one_of', 'not_one_of'],
+  match: ['is', 'is_not'],
   number: ['equals', 'not_equal', 'at_least', 'at_most', 'between'],
   text: ['contains', 'does_not_contain', 'is', 'is_not'],
+  tags: ['contains_any_tag', 'contains_all_tags', 'contains_none_tags'],
+  products: ['contains_any_product', 'contains_all_products', 'contains_none_products'],
   date: ['within_last', 'more_than_ago'],
 };
+
+const AUDIENCE_ENUM_VALUES = {
+  customer_type: [
+    { value: 'New customer', label: 'New customer', labelZh: '新客户' },
+    { value: 'Returning customer', label: 'Returning customer', labelZh: '复购买家' },
+  ],
+  logged_in: [
+    { value: 'Signed in', label: 'Signed in', labelZh: '已登录' },
+    { value: 'Guest', label: 'Guest', labelZh: '游客' },
+  ],
+  country: [
+    { value: 'United States', label: 'United States', labelZh: '美国' },
+    { value: 'Canada', label: 'Canada', labelZh: '加拿大' },
+    { value: 'United Kingdom', label: 'United Kingdom', labelZh: '英国' },
+    { value: 'Australia', label: 'Australia', labelZh: '澳大利亚' },
+    { value: 'Germany', label: 'Germany', labelZh: '德国' },
+    { value: 'France', label: 'France', labelZh: '法国' },
+  ],
+  customer_language: [
+    { value: 'English', label: 'English', labelZh: '英语' },
+    { value: 'Simplified Chinese', label: 'Simplified Chinese', labelZh: '简体中文' },
+    { value: 'Spanish', label: 'Spanish', labelZh: '西班牙语' },
+    { value: 'French', label: 'French', labelZh: '法语' },
+    { value: 'German', label: 'German', labelZh: '德语' },
+  ],
+  marketing_consent: [
+    { value: 'Subscribed', label: 'Subscribed', labelZh: '已订阅' },
+    { value: 'Not subscribed', label: 'Not subscribed', labelZh: '未订阅' },
+  ],
+  cart_currency: [
+    { value: 'USD', label: 'USD', labelZh: 'USD' },
+    { value: 'CAD', label: 'CAD', labelZh: 'CAD' },
+    { value: 'GBP', label: 'GBP', labelZh: 'GBP' },
+    { value: 'AUD', label: 'AUD', labelZh: 'AUD' },
+    { value: 'EUR', label: 'EUR', labelZh: 'EUR' },
+  ],
+};
+
+function audienceEnumValues(field, isZh) {
+  return (AUDIENCE_ENUM_VALUES[field.id] || []).map(function (item) {
+    return { value: item.value, label: isZh ? item.labelZh : item.label };
+  });
+}
 
 function audienceFieldDefinition(fieldId) {
   for (let index = 0; index < AUDIENCE_FIELD_GROUPS.length; index += 1) {
@@ -297,7 +327,8 @@ function audienceFieldDefinition(fieldId) {
 function audienceFieldOptions(isZh, selectedField) {
   return AUDIENCE_FIELD_GROUPS.map(function (group) {
     const options = group.fields.map(function (field) {
-      return '<option value="' + escapeHtml(field.id) + '" data-placeholder="' + escapeHtml(isZh ? field.placeholderZh : field.placeholder) + '" data-short="' + escapeHtml(isZh ? field.shortZh : field.short) + '" data-operators="' + escapeHtml((AUDIENCE_OPERATOR_SETS[field.operators] || AUDIENCE_OPERATOR_SETS.match).join(',')) + '"' + (field.id === selectedField ? ' selected' : '') + '>' + escapeHtml(isZh ? field.labelZh : field.label) + '</option>';
+      const values = JSON.stringify(audienceEnumValues(field, isZh));
+      return '<option value="' + escapeHtml(field.id) + '" data-placeholder="' + escapeHtml(isZh ? field.placeholderZh : field.placeholder) + '" data-short="' + escapeHtml(isZh ? field.shortZh : field.short) + '" data-value-kind="' + (field.valueKind || (field.id === 'customer_tag' ? 'tags' : '')) + '" data-default-operator="' + escapeHtml(field.defaultOperator || '') + '" data-value-options="' + escapeHtml(values) + '" data-operators="' + escapeHtml((AUDIENCE_OPERATOR_SETS[field.operators] || AUDIENCE_OPERATOR_SETS.match).join(',')) + '"' + (field.id === selectedField ? ' selected' : '') + '>' + escapeHtml(isZh ? field.labelZh : field.label) + '</option>';
     }).join('');
     return '<optgroup label="' + escapeHtml(isZh ? group.labelZh : group.label) + '">' + options + '</optgroup>';
   }).join('');
@@ -312,23 +343,143 @@ function audienceOperatorOptions(isZh, field, selectedOperator) {
   }).join('');
 }
 
-function audienceRuleRow(rule, isZh) {
-  const field = audienceFieldDefinition(rule && rule.field);
-  const value = rule && rule.value ? rule.value : (isZh ? field.placeholderZh : field.placeholder);
-  const operator = rule && rule.operator ? rule.operator : (field.operators === 'number' ? 'at_least' : field.operators === 'text' ? 'contains' : field.operators === 'date' ? 'within_last' : 'is');
-  const removeLabel = isZh ? '移除条件' : 'Remove condition';
+function audienceTagValueControl(value, isZh) {
+  const tags = String(value || '').split(',').map(function (item) { return item.trim(); }).filter(Boolean);
+  const removeLabel = isZh ? '移除标签' : 'Remove tag';
+  const chips = tags.map(function (tag) {
+    return '<span class="audience-tag-chip" data-audience-tag-chip data-tag="' + escapeHtml(tag) + '"><span>' + escapeHtml(tag) + '</span><button type="button" data-action="remove-audience-tag" aria-label="' + escapeHtml(removeLabel + ' ' + tag) + '">×</button></span>';
+  }).join('');
+  return '<div class="audience-tag-editor" data-audience-tag-editor><div class="audience-tag-list">' + chips + '</div><input type="hidden" name="audienceValue" value="' + escapeHtml(tags.join(', ')) + '" data-audience-tag-value required/><input type="text" data-audience-tag-input placeholder="' + escapeHtml(isZh ? '输入标签后按 Enter' : 'Type a tag and press Enter') + '" aria-label="' + escapeHtml(isZh ? '添加客户标签' : 'Add customer tag') + '"/></div>';
+}
+
+function audienceProductValues(value, products) {
+  const productList = Array.isArray(products) ? products : [];
+  const normalise = function (items) {
+    return Array.from(new Set(items.filter(function (item) { return typeof item === 'string' && item.trim(); }).map(function (item) { return item.trim(); })));
+  };
+  if (Array.isArray(value)) return normalise(value);
+  const source = String(value || '').trim();
+  if (!source) return [];
+  try {
+    const parsed = JSON.parse(source);
+    if (Array.isArray(parsed)) return normalise(parsed);
+  } catch (error) {
+    // Read legacy name-based rules once, then save them as stable IDs.
+  }
+  return normalise(source.split(',').map(function (name) {
+    const product = productList.find(function (item) { return item.name === name.trim(); });
+    return product ? product.id : name.trim();
+  }));
+}
+
+function audienceProductEntries(value, products) {
+  const productList = Array.isArray(products) ? products : [];
+  return audienceProductValues(value, productList).map(function (id) {
+    return productList.find(function (product) { return product.id === id; }) || { id: id, name: id };
+  });
+}
+
+function audienceProductChipsMarkup(entries, isZh) {
+  const removeLabel = isZh ? '移除商品' : 'Remove product';
+  if (!entries.length) return '<span class="audience-product-placeholder" data-audience-product-placeholder>' + (isZh ? '还未选择商品' : 'No products selected') + '</span>';
+  return entries.map(function (product) {
+    return '<span class="audience-product-chip" data-audience-product-chip data-product-id="' + escapeHtml(product.id) + '"><span>' + escapeHtml(product.name) + '</span><button type="button" data-action="remove-audience-product" aria-label="' + escapeHtml(removeLabel + ' ' + product.name) + '">×</button></span>';
+  }).join('');
+}
+
+function audienceProductValueControl(value, isZh, products) {
+  const productList = Array.isArray(products) ? products : [];
+  const selected = audienceProductValues(value, productList);
+  const selectedProducts = audienceProductEntries(selected, productList);
+  const chooseLabel = isZh ? '选择商品' : 'Choose products';
+  const searchLabel = isZh ? '搜索商品' : 'Search products';
+  const optionRows = productList.map(function (product) {
+    const isSelected = selected.includes(product.id);
+    const detail = (product.markets || []).join(' · ') + ' · ' + (isZh ? (product.inventoryState === 'Available' ? '有货' : '缺货') : product.inventoryState);
+    return '<label class="audience-product-option" data-audience-product-option-row><input type="checkbox" value="' + escapeHtml(product.id) + '" data-product-name="' + escapeHtml(product.name) + '" data-audience-product-option' + (isSelected ? ' checked' : '') + '/><span><strong>' + escapeHtml(product.name) + '</strong><small>' + escapeHtml(detail) + '</small></span></label>';
+  }).join('') || '<p class="audience-product-empty">' + (isZh ? '暂无可选择的商品。' : 'No products are available.') + '</p>';
+  return '<div class="audience-product-control" data-audience-product-control><input type="hidden" name="audienceValue" value="' + escapeHtml(JSON.stringify(selected)) + '" data-audience-product-value required/><div class="audience-product-summary" data-audience-product-summary>' + audienceProductChipsMarkup(selectedProducts, isZh) + '</div><button type="button" class="audience-product-trigger" data-action="toggle-audience-product-picker" aria-expanded="false"><span>' + escapeHtml(chooseLabel) + '</span>' + icon('chevron', 14) + '</button><div class="audience-product-menu" data-audience-product-menu><input type="search" data-audience-product-search aria-label="' + escapeHtml(searchLabel) + '" placeholder="' + escapeHtml(searchLabel) + '"/><div class="audience-product-option-list" data-audience-product-options>' + optionRows + '</div></div><small class="audience-product-error" data-audience-product-error hidden>' + (isZh ? '至少选择 1 个商品' : 'Select at least one product') + '</small></div>';
+}
+
+function audienceIntegerParts(value) {
+  const parts = String(value || '').split(/\s*(?:–|\.\.)\s*/);
+  return { min: /^\d+$/.test(parts[0] || '') ? parts[0] : '', max: /^\d+$/.test(parts[1] || '') ? parts[1] : '' };
+}
+
+function audienceIntegerValueControl(value, placeholder, isZh, operator) {
+  const parts = audienceIntegerParts(value);
+  const min = parts.min || placeholder;
+  const label = isZh ? '条件值' : 'Condition value';
+  if (operator !== 'between') return '<input type="number" min="0" step="1" inputmode="numeric" name="audienceValue" value="' + escapeHtml(min) + '" placeholder="' + escapeHtml(placeholder) + '" data-audience-value data-audience-placeholder="' + escapeHtml(placeholder) + '" aria-label="' + escapeHtml(label) + '" required/>';
+  const minLabel = isZh ? '最小值' : 'Minimum value';
+  const maxLabel = isZh ? '最大值' : 'Maximum value';
+  return '<div class="audience-number-range" data-audience-number-range><input type="number" min="0" step="1" inputmode="numeric" name="audienceValue" value="' + escapeHtml(min) + '" placeholder="' + escapeHtml(minLabel) + '" data-audience-value data-audience-placeholder="' + escapeHtml(placeholder) + '" aria-label="' + escapeHtml(minLabel) + '" required/><span>' + (isZh ? '至' : 'to') + '</span><input type="number" min="0" step="1" inputmode="numeric" value="' + escapeHtml(parts.max) + '" placeholder="' + escapeHtml(maxLabel) + '" data-audience-range-max aria-label="' + escapeHtml(maxLabel) + '" required/></div>';
+}
+
+function audienceDaysValueControl(value, placeholder, isZh) {
+  const parsed = String(value || '').trim();
+  const days = /^[1-9]\d*$/.test(parsed) ? parsed : (String(placeholder || '30').trim() || '30');
+  const label = isZh ? '距最近一次下单的天数' : 'Days since last order';
+  const unit = isZh ? '天' : 'days';
+  return '<span class="audience-days-field" data-audience-days-control><input type="number" min="1" step="1" inputmode="numeric" name="audienceValue" value="' + escapeHtml(days) + '" placeholder="' + escapeHtml(placeholder || '30') + '" data-audience-value data-audience-placeholder="' + escapeHtml(placeholder || '30') + '" aria-label="' + escapeHtml(label) + '" required/><em>' + escapeHtml(unit) + '</em></span>';
+}
+
+function audienceMoneyParts(value) {
+  const parts = String(value || '').replace(/\$/g, '').split(/\s*(?:–|\.\.)\s*/);
+  const normalized = function (part) { return /^\d+(?:\.\d{1,2})?$/.test(part || '') ? part : ''; };
+  return { min: normalized(parts[0]), max: normalized(parts[1]) };
+}
+
+function audienceMoneyInput(value, placeholder, label, name, isRangeMax) {
+  return '<span class="audience-money-field"><b>$</b><input type="number" min="0" step="0.01" inputmode="decimal"' + (name ? ' name="' + name + '"' : '') + ' value="' + escapeHtml(value) + '" placeholder="' + escapeHtml(placeholder) + '"' + (name ? ' data-audience-value data-audience-placeholder="' + escapeHtml(placeholder) + '"' : '') + (isRangeMax ? ' data-audience-range-max' : '') + ' aria-label="' + escapeHtml(label) + '" required/></span>';
+}
+
+function audienceMoneyValueControl(value, placeholder, isZh, operator) {
+  const parts = audienceMoneyParts(value);
+  const defaultValue = String(placeholder || '').replace(/^\$/, '');
+  const min = parts.min || defaultValue;
+  const label = isZh ? '消费金额（USD）' : 'Spend amount (USD)';
+  if (operator !== 'between') return '<span data-audience-money-control>' + audienceMoneyInput(min, defaultValue, label, 'audienceValue', false) + '</span>';
+  const minLabel = isZh ? '最低消费金额（USD）' : 'Minimum spend (USD)';
+  const maxLabel = isZh ? '最高消费金额（USD）' : 'Maximum spend (USD)';
+  return '<div class="audience-number-range" data-audience-number-range data-audience-money-control>' + audienceMoneyInput(min, defaultValue, minLabel, 'audienceValue', false) + '<span>' + (isZh ? '至' : 'to') + '</span>' + audienceMoneyInput(parts.max, defaultValue, maxLabel, '', true) + '</div>';
+}
+
+function audienceValueControl(field, value, isZh, operator, products) {
+  if (field.id === 'customer_tag') return audienceTagValueControl(value, isZh);
+  if (field.valueKind === 'products') return audienceProductValueControl(value, isZh, products);
   const placeholder = isZh ? field.placeholderZh : field.placeholder;
-  return '<div class="audience-rule-row" data-audience-rule><select name="audienceField" aria-label="' + escapeHtml(isZh ? '受众字段' : 'Audience attribute') + '" data-audience-field>' + audienceFieldOptions(isZh, field.id) + '</select><select name="audienceOperator" aria-label="' + escapeHtml(isZh ? '比较方式' : 'Comparison') + '">' + audienceOperatorOptions(isZh, field, operator) + '</select><input type="text" name="audienceValue" value="' + escapeHtml(value) + '" placeholder="' + escapeHtml(placeholder) + '" data-audience-placeholder="' + escapeHtml(placeholder) + '" aria-label="' + escapeHtml(isZh ? '条件值' : 'Condition value') + '" required/><button type="button" class="audience-rule-remove" data-action="remove-audience-rule" aria-label="' + escapeHtml(removeLabel) + '" title="' + escapeHtml(removeLabel) + '">×</button></div>';
+  if (field.valueKind === 'integer') return audienceIntegerValueControl(value, placeholder, isZh, operator);
+  if (field.valueKind === 'money') return audienceMoneyValueControl(value, placeholder, isZh, operator);
+  if (field.valueKind === 'days') return audienceDaysValueControl(value, placeholder, isZh);
+  const values = audienceEnumValues(field, isZh);
+  const selectedValue = value || placeholder;
+  if (!values.length) {
+    return '<input type="text" name="audienceValue" value="' + escapeHtml(selectedValue) + '" placeholder="' + escapeHtml(placeholder) + '" data-audience-value data-audience-placeholder="' + escapeHtml(placeholder) + '" aria-label="' + escapeHtml(isZh ? '条件值' : 'Condition value') + '" required/>';
+  }
+  if (!values.some(function (item) { return item.value === selectedValue; })) values.unshift({ value: selectedValue, label: selectedValue });
+  const options = values.map(function (item) {
+    return '<option value="' + escapeHtml(item.value) + '"' + (item.value === selectedValue ? ' selected' : '') + '>' + escapeHtml(item.label) + '</option>';
+  }).join('');
+  return '<select name="audienceValue" data-audience-value data-audience-placeholder="' + escapeHtml(placeholder) + '" aria-label="' + escapeHtml(isZh ? '条件值' : 'Condition value') + '" required>' + options + '</select>';
+}
+
+function audienceRuleRow(rule, isZh, products) {
+  const field = audienceFieldDefinition(rule && rule.field);
+  const value = rule && rule.value ? rule.value : (field.id === 'customer_tag' ? '' : (isZh ? field.placeholderZh : field.placeholder));
+  const operator = rule && rule.operator ? rule.operator : (field.operators === 'number' ? 'at_least' : field.operators === 'text' ? 'contains' : field.operators === 'tags' ? 'contains_any_tag' : field.operators === 'date' ? 'within_last' : 'is');
+  const removeLabel = isZh ? '移除条件' : 'Remove condition';
+  return '<div class="audience-rule-row" data-audience-rule><select name="audienceField" aria-label="' + escapeHtml(isZh ? '受众字段' : 'Audience attribute') + '" data-audience-field>' + audienceFieldOptions(isZh, field.id) + '</select><select name="audienceOperator" aria-label="' + escapeHtml(isZh ? '比较方式' : 'Comparison') + '">' + audienceOperatorOptions(isZh, field, operator) + '</select>' + audienceValueControl(field, value, isZh, operator, products) + '<button type="button" class="audience-rule-remove" data-action="remove-audience-rule" aria-label="' + escapeHtml(removeLabel) + '" title="' + escapeHtml(removeLabel) + '">×</button></div>';
 }
 
 function audienceConditionsForModal(funnel) {
   return Array.isArray(funnel.audienceConditions) && funnel.audienceConditions.length ? funnel.audienceConditions : [{ field: 'customer_type', operator: 'is', value: 'All eligible customers' }];
 }
 
-function renderAudienceBuilder(funnel, isZh) {
-  const audienceRows = audienceConditionsForModal(funnel).map(function (rule) { return audienceRuleRow(rule, isZh); }).join('');
-  const template = audienceRuleRow({ field: 'customer_type', operator: 'is', value: isZh ? '新客户' : 'New customer' }, isZh);
-  return '<section class="audience-builder"><header><span><strong>' + (isZh ? '哪些用户进入此漏斗（AND）' : 'Who enters this Funnel (AND)') + '</strong><small>' + (isZh ? '所有条件命中后，买家才会进入“' + escapeHtml(funnel.name) + '”，再参加本漏斗内的 Checkout 实验。' : 'Buyers enter “' + escapeHtml(funnel.name) + '” only when every condition matches, then join this Funnel’s Checkout experiment.') + '</small></span><em>' + (isZh ? '未命中 → Shopify Checkout' : 'No match → Shopify Checkout') + '</em></header><div class="audience-rule-list" data-audience-rule-list>' + audienceRows + '</div><template data-audience-rule-template>' + template + '</template><button type="button" class="audience-add-rule" data-action="add-audience-rule">' + icon('plus', 16) + '<span>' + (isZh ? '添加条件' : 'Add condition') + '</span></button><p>' + (isZh ? '可组合用户画像、访问与投放、购物车与订单历史条件。多个漏斗同时命中时，优先级更高的漏斗优先。' : 'Combine customer profile, acquisition, cart and order-history conditions. If multiple Funnels match, the higher-priority Funnel wins.') + '</p></section>';
+function renderAudienceBuilder(funnel, isZh, products) {
+  const audienceRows = audienceConditionsForModal(funnel).map(function (rule) { return audienceRuleRow(rule, isZh, products); }).join('');
+  const template = audienceRuleRow({ field: 'customer_type', operator: 'is', value: isZh ? '新客户' : 'New customer' }, isZh, products);
+  return '<section class="audience-builder"><header><span><strong>' + (isZh ? '哪些用户进入此漏斗（AND）' : 'Who enters this Funnel (AND)') + '</strong><small>' + (isZh ? '所有条件命中后，买家才会进入“' + escapeHtml(funnel.name) + '”，再参加本漏斗内的 Checkout 实验。' : 'Buyers enter “' + escapeHtml(funnel.name) + '” only when every condition matches, then join this Funnel’s Checkout experiment.') + '</small></span><em>' + (isZh ? '未命中 → Shopify Checkout' : 'No match → Shopify Checkout') + '</em></header><div class="audience-rule-list" data-audience-rule-list>' + audienceRows + '</div><template data-audience-rule-template>' + template + '</template><button type="button" class="audience-add-rule" data-action="add-audience-rule">' + icon('plus', 16) + '<span>' + (isZh ? '添加条件' : 'Add condition') + '</span></button><p>' + (isZh ? '可组合客户身份、店铺当前上下文与购物车条件。客户订单与标签条件仅适用于已登录买家。' : 'Combine customer identity, storefront context, and cart conditions. Customer order and tag conditions apply only to signed-in buyers.') + '</p></section>';
 }
 
 export function renderFunnelEntryModal(state, funnel) {
@@ -336,7 +487,7 @@ export function renderFunnelEntryModal(state, funnel) {
   const priority = Number.isFinite(Number(funnel.priority)) ? funnel.priority : 100;
   const intro = '<section class="funnel-entry-modal-intro"><span>' + icon('flow', 18) + '</span><div><small>' + (isZh ? '第 1 层：漏斗路由' : 'Layer 1: Funnel routing') + '</small><strong>' + (isZh ? '先决定进入哪一个漏斗，再决定看到哪个 Checkout 模板。' : 'Choose the Funnel first, then choose the Checkout variant.') + '</strong><p>' + (isZh ? '未命中任何漏斗的购物车始终回退到 Shopify 原生 Checkout。' : 'Carts that do not match any Funnel always fall back to Shopify native Checkout.') + '</p></div></section>';
   const priorityFields = '<section class="funnel-priority-fields"><label>' + (isZh ? '漏斗优先级' : 'Funnel priority') + '<input type="number" name="priority" min="1" max="999" step="1" value="' + escapeHtml(priority) + '" required/><small>' + (isZh ? '数值越小优先级越高。多个漏斗同时命中时，只进入优先级最高的一个。' : 'Lower numbers win. If several Funnels match, buyers enter only the highest-priority one.') + '</small></label><label>' + (isZh ? '冲突处理' : 'Conflict handling') + '<input type="text" value="' + escapeHtml(isZh ? '首次命中（按优先级）' : 'First match by priority') + '" disabled/><small>' + (isZh ? '避免同一购物车同时进入多条路径。' : 'Prevents one cart from entering multiple journeys.') + '</small></label></section>';
-  const body = '<form id="funnel-entry-form" class="form-stack"><input type="hidden" name="funnelId" value="' + escapeHtml(funnel.id) + '"/>' + intro + priorityFields + renderAudienceBuilder(funnel, isZh) + '</form>';
+  const body = '<form id="funnel-entry-form" class="form-stack"><input type="hidden" name="funnelId" value="' + escapeHtml(funnel.id) + '"/>' + intro + priorityFields + renderAudienceBuilder(funnel, isZh, state.offerCatalogVariants) + '</form>';
   const footer = button(isZh ? '取消' : 'Cancel', 'close-modal') + '<button type="submit" form="funnel-entry-form" class="button button-primary">' + (isZh ? '保存漏斗入口' : 'Save Funnel entry') + '</button>';
   return modalShell('funnel-entry', isZh ? '配置漏斗入口' : 'Configure Funnel entry', funnel.name, body, footer, true);
 }
@@ -588,27 +739,28 @@ export function renderQuickStartModalDirectEntryLegacy(state) {
 export function renderQuickStartModal(state) {
   const isZh = state.ui.locale === 'zh';
   const readiness = getSetupReadiness(state);
-  const items = readiness.checks.concat(readiness.launch);
+  const items = readiness.checks;
   const next = items.find((item) => item.state !== 'complete') || readiness.launch;
   const actionLabel = function (item) {
-    if (item.state === 'complete') return isZh ? '查看配置' : 'Review';
+    if (item.state === 'complete') return isZh ? '查看' : 'View';
     if (item.state === 'ready') return isZh ? '预览并发布' : 'Preview & publish';
-    if (item.id === 'launch') return isZh ? '查看阻塞项' : 'View blockers';
-    return isZh ? '去配置' : 'Configure';
+    if (item.id === 'launch') return isZh ? '去发布' : 'Publish';
+    return isZh ? '去设置' : 'Set up';
   };
   const stateLabel = function (item) {
-    if (item.state === 'complete') return isZh ? '系统已验证' : 'System verified';
-    if (item.state === 'ready') return isZh ? '可发布' : 'Ready to publish';
-    if (item.state === 'blocked') return isZh ? '被必需校验阻止' : 'Blocked by required checks';
-    return isZh ? '需要处理' : 'Needs attention';
+    if (item.state === 'complete') return isZh ? '已完成' : 'Complete';
+    if (item.state === 'ready') return isZh ? '可以发布' : 'Ready to publish';
+    if (item.state === 'blocked') return isZh ? '请先完成设置' : 'Finish setup first';
+    return isZh ? '待设置' : 'Set up needed';
   };
   const allSteps = items.map(function (item) {
     const stateIcon = item.state === 'complete' ? icon('check', 15) : item.state === 'ready' ? icon('play', 15) : icon('alert', 15);
-    return '<button type="button" class="onboarding-step-row onboarding-system-row is-' + escapeHtml(item.state) + '" data-action="onboarding-open-step" data-target-route="' + escapeHtml(item.route) + '"><span>' + stateIcon + '</span><div><strong>' + escapeHtml(isZh ? item.titleZh : item.title) + '</strong><small>' + escapeHtml(isZh ? item.sourceZh : item.source) + '</small></div><em>' + escapeHtml(stateLabel(item)) + ' ' + icon('chevron', 13) + '</em></button>';
+    return '<button type="button" class="onboarding-step-row onboarding-system-row is-' + escapeHtml(item.state) + '" data-action="onboarding-open-step" data-target-route="' + escapeHtml(item.route) + '"><span>' + stateIcon + '</span><div><strong>' + escapeHtml(isZh ? item.titleZh : item.title) + '</strong></div><em>' + escapeHtml(stateLabel(item)) + ' ' + icon('chevron', 13) + '</em></button>';
   }).join('');
-  const body = '<div class="onboarding-modal"><div class="onboarding-modal-intro"><span>' + icon('shield', 19) + '</span><div><strong>' + escapeHtml(isZh ? '系统发布准备校验' : 'System launch-readiness checks') + '</strong><p>' + escapeHtml(isZh ? '配置顺序不限。每项完成状态由系统自动判断，商户无需确认“已完成”。' : 'Configuration order is flexible. The system determines every completion state; merchants never confirm a task manually.') + '</p></div><b>' + readiness.completeCount + '/' + items.length + '</b></div><div class="onboarding-modal-grid"><nav class="onboarding-step-list">' + allSteps + '</nav><section class="onboarding-current-step"><span>' + escapeHtml(isZh ? '建议优先处理' : 'Recommended check') + '</span><h3>' + escapeHtml(isZh ? next.titleZh : next.title) + '</h3><p>' + escapeHtml(isZh ? next.detailZh : next.detail) + '</p><div class="onboarding-time"><span>' + icon('activity', 16) + '</span><strong>' + escapeHtml(stateLabel(next)) + '</strong><small>' + escapeHtml(isZh ? '系统会在配置或健康状态变化后自动重新校验；这只是建议，不代表必须按此顺序完成。' : 'The system automatically rechecks after a configuration or health-state change. This is a recommendation, not a required sequence.') + '</small></div><div class="modal-callout"><span>' + icon('shield', 17) + '</span><span><strong>' + escapeHtml(isZh ? '发布前始终保留安全回退' : 'Safe fallback remains in place') + '</strong><small>' + escapeHtml(isZh ? '所有必需校验通过并发布前，买家会继续使用 Shopify 原生 Checkout。' : 'Buyers continue through Shopify native Checkout until required checks pass and you publish.') + '</small></span></div></section></div></div>';
+  const optionalGrowth = '<button type="button" class="onboarding-step-row onboarding-system-row onboarding-optional-growth" data-action="onboarding-open-step" data-target-route="funnels"><span>' + icon('sparkles', 15) + '</span><div><strong>' + escapeHtml(isZh ? '添加 Upsell / Downsell（可选）' : 'Add Upsell / Downsell (optional)') + '</strong></div><em>' + escapeHtml(isZh ? '可选' : 'Optional') + ' ' + icon('chevron', 13) + '</em></button>';
+  const body = '<div class="onboarding-modal"><div class="onboarding-modal-intro"><span>' + icon('shield', 19) + '</span><div><strong>' + escapeHtml(isZh ? '准备上线' : 'Get ready to launch') + '</strong><p>' + escapeHtml(isZh ? '完成以下设置后，就可以预览并发布结账页。' : 'Complete these setup tasks, then preview and publish your checkout.') + '</p></div><b>' + readiness.completeCount + '/' + items.length + '</b></div><div class="onboarding-modal-grid"><nav class="onboarding-step-list">' + allSteps + optionalGrowth + '</nav><section class="onboarding-current-step"><span>' + escapeHtml(isZh ? '下一步' : 'Next step') + '</span><h3>' + escapeHtml(isZh ? next.titleZh : next.title) + '</h3><p>' + escapeHtml(isZh ? next.detailZh : next.detail) + '</p><div class="onboarding-time"><span>' + icon('activity', 16) + '</span><strong>' + escapeHtml(stateLabel(next)) + '</strong><small>' + escapeHtml(isZh ? '完成后可继续下一项，无需按固定顺序设置。' : 'Complete tasks in any order, then continue with the next one.') + '</small></div><div class="modal-callout"><span>' + icon('shield', 17) + '</span><span><strong>' + escapeHtml(isZh ? '不会影响现有结账' : 'Your current checkout stays unchanged') + '</strong><small>' + escapeHtml(isZh ? '发布前，买家会继续在 Shopify 原生结账完成付款。' : 'Before publishing, buyers continue through your Shopify checkout.') + '</small></span></div></section></div></div>';
   const footer = button(isZh ? '关闭' : 'Close', 'close-modal') + '<button type="button" class="button button-primary" data-action="onboarding-open-step" data-target-route="' + escapeHtml(next.route) + '">' + icon(next.state === 'ready' ? 'play' : 'arrow', 16) + '<span>' + escapeHtml(actionLabel(next)) + '</span></button>';
-  return modalShell('quick-start', isZh ? '发布准备' : 'Launch readiness', isZh ? '由系统持续校验，不依赖手动完成确认。' : 'Continuously verified by the system; no manual task confirmation.', body, footer, true);
+  return modalShell('quick-start', isZh ? '上线准备' : 'Launch setup', isZh ? '完成必要设置后即可发布。' : 'Complete the required setup, then publish.', body, footer, true);
 }
 
 export function renderInstallationModal(locale) {

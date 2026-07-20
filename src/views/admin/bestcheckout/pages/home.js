@@ -1,5 +1,5 @@
 import { badge, banner, button, icon, metricCard, pageHeader, progressBar, routeButton, sectionHeader } from '../components/common.js';
-import { getSetupReadiness } from '../readiness.js?rev=20260717-store-state-v77';
+import { getSetupReadiness } from '../readiness.js?rev=20260719-optional-growth-v105';
 import { escapeHtml } from '../utils.js';
 
 function renderFunnelRows(state) {
@@ -62,9 +62,9 @@ function renderPrelaunchOverviewLegacy(state) {
   const index = Math.min(Math.max(0, state.ui.onboardingStep || 0), Math.max(0, steps.length - 1));
   const current = steps[index] || steps[0];
   const afterPublish = [
-    { icon: 'analytics', title: isZh ? '转化与收入' : 'Conversion and revenue', detail: isZh ? '首次发布后，这里会显示 Checkout 转化、客单价和购后收入。' : 'Checkout conversion, order value and post-purchase revenue appear after the first publish.' },
-    { icon: 'activity', title: isZh ? '上线健康度' : 'Launch health', detail: isZh ? '域名、支付、追踪、App Embed 与订单回写会持续监控。' : 'Domain, payments, tracking, App Embed and order writeback are monitored continuously.' },
-    { icon: 'shield', title: isZh ? '安全发布' : 'Safe publish', detail: isZh ? '发布前 Shopify 原生 Checkout 始终保留为安全路径。' : 'Shopify native Checkout remains the safety path until you publish.' },
+    { icon: 'analytics', title: isZh ? '销售表现' : 'Sales performance', detail: isZh ? '发布后，这里会显示结账转化、客单价和购后收入。' : 'After publishing, see checkout conversion, order value and post-purchase revenue.' },
+    { icon: 'activity', title: isZh ? '店铺状态' : 'Store status', detail: isZh ? '结账网址、收款和订单数据会持续更新，方便你及时发现问题。' : 'Keep track of your checkout address, payments and order data.' },
+    { icon: 'shield', title: isZh ? '安心上线' : 'Launch with confidence', detail: isZh ? '发布前，买家会继续在 Shopify 原生结账完成付款。' : 'Before publishing, buyers continue through your Shopify checkout.' },
   ].map(function (item) {
     return '<div><span>' + icon(item.icon, 18) + '</span><strong>' + escapeHtml(item.title) + '</strong><small>' + escapeHtml(item.detail) + '</small></div>';
   }).join('');
@@ -80,46 +80,47 @@ function renderPrelaunchOverviewLegacy(state) {
 function setupLabel(state, value) { return state.ui.locale === 'zh' ? value.zh : value.en; }
 
 function setupActionLabel(state, item) {
-  if (item.state === 'complete') return setupLabel(state, { en: 'Review', zh: '查看配置' });
+  if (item.state === 'complete') return setupLabel(state, { en: 'View', zh: '查看' });
   if (item.state === 'ready') return setupLabel(state, { en: 'Preview & publish', zh: '预览并发布' });
-  if (item.id === 'launch') return setupLabel(state, { en: 'View blockers', zh: '查看阻塞项' });
-  return setupLabel(state, { en: 'Configure', zh: '去配置' });
+  if (item.id === 'launch') return setupLabel(state, { en: 'Publish', zh: '去发布' });
+  return setupLabel(state, { en: 'Set up', zh: '去设置' });
 }
 
 function setupStateLabel(state, item) {
-  if (item.state === 'complete') return setupLabel(state, { en: 'System verified', zh: '系统已验证' });
-  if (item.state === 'ready') return setupLabel(state, { en: 'Ready to publish', zh: '可发布' });
-  if (item.state === 'blocked') return setupLabel(state, { en: 'Blocked by required checks', zh: '被必需校验阻止' });
-  return setupLabel(state, { en: 'Needs attention', zh: '需要处理' });
+  if (item.state === 'complete') return setupLabel(state, { en: 'Complete', zh: '已完成' });
+  if (item.state === 'ready') return setupLabel(state, { en: 'Ready to publish', zh: '可以发布' });
+  if (item.state === 'blocked') return setupLabel(state, { en: 'Finish setup first', zh: '请先完成设置' });
+  return setupLabel(state, { en: 'Set up needed', zh: '待设置' });
 }
 
 function renderQuickStart(state) {
   const isZh = state.ui.locale === 'zh';
   const readiness = getSetupReadiness(state);
   if (readiness.live) return '';
-  const items = readiness.checks.concat(readiness.launch);
+  const items = readiness.checks;
   const next = items.find((item) => item.state !== 'complete') || readiness.launch;
   const unresolvedMinutes = readiness.checks.filter((item) => item.state !== 'complete').reduce((sum, item) => sum + item.minutes, 0);
   const stepList = items.map(function (item) {
     const stateClass = ' is-' + item.state.replace('_', '-');
     const stateIcon = item.state === 'complete' ? icon('check', 14) : item.state === 'ready' ? icon('play', 14) : icon('alert', 14);
-    return '<article class="quickstart-step quickstart-system-check' + stateClass + '" role="listitem"><span>' + stateIcon + '</span><div><strong>' + escapeHtml(isZh ? item.titleZh : item.title) + '</strong><small>' + escapeHtml(isZh ? item.detailZh : item.detail) + '</small><i>' + escapeHtml(isZh ? '系统来源：' + item.sourceZh : 'System check: ' + item.source) + '</i></div><em>' + escapeHtml(setupStateLabel(state, item)) + '</em><button type="button" class="quickstart-step-action" data-action="onboarding-open-step" data-target-route="' + escapeHtml(item.route) + '">' + escapeHtml(setupActionLabel(state, item)) + icon('chevron', 14) + '</button></article>';
+    return '<article class="quickstart-step quickstart-system-check' + stateClass + '" role="listitem"><span>' + stateIcon + '</span><div><strong>' + escapeHtml(isZh ? item.titleZh : item.title) + '</strong><small>' + escapeHtml(isZh ? item.detailZh : item.detail) + '</small></div><em>' + escapeHtml(setupStateLabel(state, item)) + '</em><button type="button" class="quickstart-step-action" data-action="onboarding-open-step" data-target-route="' + escapeHtml(item.route) + '">' + escapeHtml(setupActionLabel(state, item)) + icon('chevron', 14) + '</button></article>';
   }).join('');
+  const optionalGrowth = '<article class="quickstart-step quickstart-system-check quickstart-optional-growth" role="listitem"><span>' + icon('sparkles', 14) + '</span><div><strong>' + escapeHtml(isZh ? '添加 Upsell / Downsell（可选）' : 'Add Upsell / Downsell (optional)') + '</strong><small>' + escapeHtml(isZh ? '付款后展示 Upsell；买家拒绝后可用 Downsell 提供替代选择。不影响上线，可随时添加。' : 'Show an Upsell after payment, or a Downsell after an offer is declined. It never delays launch and can be added anytime.') + '</small></div><em>' + escapeHtml(isZh ? '可选' : 'Optional') + '</em><button type="button" class="quickstart-step-action" data-route="funnels">' + escapeHtml(isZh ? '去添加' : 'Add') + icon('chevron', 14) + '</button></article>';
   const nextAction = '<button type="button" class="button button-primary" data-action="onboarding-open-step" data-target-route="' + escapeHtml(next.route) + '">' + icon(next.state === 'ready' ? 'play' : 'arrow', 16) + '<span>' + escapeHtml(setupActionLabel(state, next)) + '</span></button>';
-  return '<section class="quickstart-card quickstart-system-card"><div class="quickstart-overview"><div class="quickstart-copy"><span class="quickstart-kicker">' + escapeHtml(isZh ? '发布准备' : 'Launch readiness') + '</span><h2>' + escapeHtml(isZh ? '并行完成 ' + items.length + ' 项发布前校验' : 'Complete ' + items.length + ' publish checks in any order') + '</h2><p>' + escapeHtml(isZh ? '每项配置都可独立进入；完成状态由系统自动校验，商户不需要手动确认。' : 'Each configuration can be opened independently. The system verifies completion automatically; merchants never confirm a task manually.') + '</p></div><div class="quickstart-side"><div class="quickstart-progress"><div><strong>' + readiness.completeCount + '/' + items.length + '</strong><span>' + escapeHtml(isZh ? '系统已验证' : 'system verified') + '</span></div><small>' + escapeHtml(isZh ? '约 ' + unresolvedMinutes + ' 分钟待配置' : '~' + unresolvedMinutes + ' min of setup') + '</small></div><button type="button" class="button button-secondary" data-action="open-onboarding">' + icon('shield', 16) + '<span>' + escapeHtml(isZh ? '查看校验详情' : 'View check details') + '</span></button></div></div><div class="quickstart-body"><div class="quickstart-steps quickstart-system-steps" role="list">' + stepList + '</div><aside class="quickstart-current quickstart-system-summary"><span>' + escapeHtml(isZh ? '建议优先处理' : 'Recommended check') + '</span><h3>' + escapeHtml(isZh ? next.titleZh : next.title) + '</h3><p>' + escapeHtml(isZh ? next.detailZh : next.detail) + '</p><div><strong>' + escapeHtml(setupStateLabel(state, next)) + '</strong><small>' + escapeHtml(isZh ? '系统会在配置变更或健康状态变化后自动重新校验；不代表必须按此顺序完成。' : 'The system rechecks after a configuration or health-state change; this is a recommendation, not a required sequence.') + '</small></div>' + nextAction + '</aside></div></section>';
+  return '<section class="quickstart-card quickstart-system-card"><div class="quickstart-overview"><div class="quickstart-copy"><span class="quickstart-kicker">' + escapeHtml(isZh ? '准备上线' : 'Get ready to launch') + '</span><h2>' + escapeHtml(isZh ? '完成 ' + items.length + ' 项上线准备' : 'Complete ' + items.length + ' launch tasks') + '</h2></div><div class="quickstart-side"><div class="quickstart-progress"><div><strong>' + readiness.completeCount + '/' + items.length + '</strong><span>' + escapeHtml(isZh ? '已完成' : 'complete') + '</span></div><small>' + escapeHtml(isZh ? '预计约 ' + unresolvedMinutes + ' 分钟' : '~' + unresolvedMinutes + ' min remaining') + '</small></div><button type="button" class="button button-secondary" data-action="open-onboarding">' + icon('shield', 16) + '<span>' + escapeHtml(isZh ? '查看准备事项' : 'View setup tasks') + '</span></button></div></div><div class="quickstart-body"><div class="quickstart-steps quickstart-system-steps" role="list">' + stepList + optionalGrowth + '</div><aside class="quickstart-current quickstart-system-summary"><span>' + escapeHtml(isZh ? '下一步' : 'Next step') + '</span><h3>' + escapeHtml(isZh ? next.titleZh : next.title) + '</h3><p>' + escapeHtml(isZh ? next.detailZh : next.detail) + '</p><div><strong>' + escapeHtml(setupStateLabel(state, next)) + '</strong><small>' + escapeHtml(isZh ? '完成后可继续下一项，无需按固定顺序设置。' : 'Complete tasks in any order, then continue with the next one.') + '</small></div>' + nextAction + '</aside></div></section>';
 }
 
 function renderPrelaunchOverview(state) {
   const isZh = state.ui.locale === 'zh';
   const readiness = getSetupReadiness(state);
-  const items = readiness.checks.concat(readiness.launch);
+  const items = readiness.checks;
   const next = items.find((item) => item.state !== 'complete') || readiness.launch;
   const afterPublish = [
-    { icon: 'analytics', title: isZh ? '转化与收入' : 'Conversion and revenue', detail: isZh ? '首次发布后，这里会显示 Checkout 转化、客单价和购后收入。' : 'Checkout conversion, order value and post-purchase revenue appear after the first publish.' },
-    { icon: 'activity', title: isZh ? '上线健康度' : 'Launch health', detail: isZh ? '域名、支付、追踪、App Embed 与订单回写会持续监控。' : 'Domain, payments, tracking, App Embed and order writeback are monitored continuously.' },
-    { icon: 'shield', title: isZh ? '安全发布' : 'Safe publish', detail: isZh ? '发布前 Shopify 原生 Checkout 始终保留为安全路径。' : 'Shopify native Checkout remains the safety path until you publish.' },
+    { icon: 'analytics', title: isZh ? '销售表现' : 'Sales performance', detail: isZh ? '发布后，这里会显示结账转化、客单价和购后收入。' : 'After publishing, see checkout conversion, order value and post-purchase revenue.' },
+    { icon: 'activity', title: isZh ? '店铺状态' : 'Store status', detail: isZh ? '结账网址、收款和订单数据会持续更新，方便你及时发现问题。' : 'Keep track of your checkout address, payments and order data.' },
+    { icon: 'shield', title: isZh ? '安心上线' : 'Launch with confidence', detail: isZh ? '发布前，买家会继续在 Shopify 原生结账完成付款。' : 'Before publishing, buyers continue through your Shopify checkout.' },
   ].map(function (item) { return '<div><span>' + icon(item.icon, 18) + '</span><strong>' + escapeHtml(item.title) + '</strong><small>' + escapeHtml(item.detail) + '</small></div>'; }).join('');
-  return '<section class="overview-dashboard-grid onboarding-dashboard-grid"><div class="overview-dashboard-column"><section class="card"><div class="card-pad">' + sectionHeader(isZh ? '发布后你会在这里看到什么' : 'What appears here after you publish', isZh ? '完成系统校验后即可安全预览并发布，无需按固定顺序操作。' : 'When system checks pass, preview and publish safely—no fixed configuration order required.') + '<div class="onboarding-after-launch">' + afterPublish + '</div></div></section></div><div class="overview-dashboard-column"><aside class="card onboarding-health-preview"><div class="card-pad">' + sectionHeader(isZh ? '发布准备状态' : 'Publish readiness', isZh ? '发布校验会持续刷新，系统会指出下一项需要处理的配置。' : 'Publish checks refresh continuously and identify the next configuration that needs attention.') + '<div class="onboarding-health-note"><span>' + icon(next.state === 'complete' ? 'check' : 'alert', 18) + '</span><div><strong>' + escapeHtml(isZh ? next.titleZh : next.title) + '</strong><small>' + escapeHtml(isZh ? next.detailZh : next.detail) + '</small></div></div><button type="button" class="button button-plain" data-action="onboarding-open-step" data-target-route="' + escapeHtml(next.route) + '">' + icon('arrow', 16) + '<span>' + escapeHtml(setupActionLabel(state, next)) + '</span></button></div></aside></div></section>';
+  return '<section class="overview-dashboard-grid onboarding-dashboard-grid"><div class="overview-dashboard-column"><section class="card"><div class="card-pad">' + sectionHeader(isZh ? '上线后你可以看到什么' : 'What you can see after launch', isZh ? '完成上方设置后，即可预览并发布结账页。' : 'Complete the setup above, then preview and publish your checkout.') + '<div class="onboarding-after-launch">' + afterPublish + '</div></div></section></div><div class="overview-dashboard-column"><aside class="card onboarding-health-preview"><div class="card-pad">' + sectionHeader(isZh ? '下一步设置' : 'Next setup task', isZh ? '完成以下任一设置后，再继续下一项。' : 'Complete any task below, then move to the next one.') + '<div class="onboarding-health-note"><span>' + icon(next.state === 'complete' ? 'check' : 'alert', 18) + '</span><div><strong>' + escapeHtml(isZh ? next.titleZh : next.title) + '</strong><small>' + escapeHtml(isZh ? next.detailZh : next.detail) + '</small></div></div><button type="button" class="button button-plain" data-action="onboarding-open-step" data-target-route="' + escapeHtml(next.route) + '">' + icon('arrow', 16) + '<span>' + escapeHtml(setupActionLabel(state, next)) + '</span></button></div></aside></div></section>';
 }
 
 export function renderHome(state) {
@@ -147,13 +148,13 @@ export function renderHome(state) {
   }).join('');
 
   const header = pageHeader(
-    'Overview',
-    'See revenue lift, active funnels and the next action required for this Shopify store.',
-    button('Create page', 'create-page', { icon: 'pages' }) + button('Create funnel', 'open-create-funnel', { kind: 'primary', icon: 'plus' })
+    isZh ? '概览' : 'Overview',
+    isZh ? '查看收入提升、购买流程，以及这家店铺接下来需要完成的事项。' : 'See revenue lift, purchase flows and the next setup task for this store.',
+    button(isZh ? '创建页面' : 'Create page', 'create-page', { icon: 'pages' }) + button(isZh ? '创建购买流程' : 'Create purchase flow', 'open-create-funnel', { kind: 'primary', icon: 'plus' })
   );
 
   const liveBanner = isFirstLaunch
-    ? banner('warning', isZh ? '首个 Checkout 尚未发布' : 'Your first Checkout is not live yet', isZh ? '所有必需的系统校验通过并发布前，所有买家都会继续使用 Shopify 原生 Checkout。' : 'All buyers continue through Shopify native Checkout until required system checks pass and you publish.', button(isZh ? '查看发布准备' : 'Review publish readiness', 'open-onboarding', { kind: 'plain', icon: 'shield' }))
+    ? banner('warning', isZh ? '结账页尚未上线' : 'Your checkout is not live yet', isZh ? '完成上方设置并发布前，买家会继续使用现有 Shopify 结账完成付款。' : 'Complete the setup above, then publish your checkout. Until then, buyers continue through Shopify checkout.', button(isZh ? '查看上线准备' : 'View launch setup', 'open-onboarding', { kind: 'plain', icon: 'shield' }))
     : banner(
       liveFunnel && !circuitOpen ? 'success' : 'warning',
       circuitOpen ? 'Writeback circuit is protecting new checkout sessions' : liveFunnel ? 'BestCheckout is live on ' + runtimeTraffic.hosted + '% of eligible traffic' : 'Hosted checkout traffic is paused',

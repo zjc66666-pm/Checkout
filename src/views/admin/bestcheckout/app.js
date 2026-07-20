@@ -4,7 +4,7 @@ import {
   FUNNEL_STATUS,
   TRACKING_CONTRACT_VERSION,
 } from './type.js';
-import { createMockBestCheckoutState } from './mock.js?rev=20260719-activity-categories-v88';
+import { createMockBestCheckoutState } from './mock.js?rev=20260719-system-flow-i18n-v113';
 import { buildRuntimePayload, deterministicPayloadHash, graphEdgesForNodes, validateGraphCoverage } from './runtime.js?rev=20260716-rich-audience-v19';
 import { icon } from './components/common.js?rev=20260716-focus-mode-v27';
 import {
@@ -29,16 +29,16 @@ import {
   renderTrackingReviewModal,
   renderTrafficModal,
   renderUnsavedChangesModal,
-} from './components/modals.js?rev=20260719-payment-connect-wizard-v91';
-import { renderHome } from './pages/home.js?rev=20260717-trend-refinement-v81';
-import { renderFunnels } from './pages/funnels.js?rev=20260717-store-state-v77';
+} from './components/modals.js?rev=20260720-product-picker-v133';
+import { renderHome } from './pages/home.js?rev=20260719-optional-growth-v105';
+import { renderFunnels } from './pages/funnels.js?rev=20260720-card-icon-hierarchy-v134';
 import { renderPages } from './pages/pages.js?rev=20260719-page-actions-menu-v84';
 import { renderPerformance } from './pages/performance.js?rev=20260719-performance-date-range-v89';
 import { renderActivity } from './pages/activity.js?rev=20260717-inline-activity-filter-v61';
 import { renderSettings } from './pages/settings.js?rev=20260717-installation-flow-v82';
 import { renderEditor, mountEditor } from './pages/editor.js?rev=20260719-preview-session-v92';
 import { escapeHtml, formatDateTime, getRouteName, parseRoute, setRoute } from './utils.js';
-import { applyLocale, renderLanguageSwitcher, translate } from './i18n.js?rev=20260717-language-panel-v74';
+import { applyLocale, renderLanguageSwitcher, translate } from './i18n.js?rev=20260719-merchant-terminology-v103';
 
 const appRoot = document.getElementById('app');
 const modalRoot = document.getElementById('modal-root');
@@ -51,6 +51,7 @@ try {
   state.ui.locale = 'en';
 }
 let modalReturnFocus = null;
+let modalHistory = [];
 let toastTimer = null;
 let lastRenderedHash = window.location.hash;
 let lastRenderedWasEditor = isEditorRoute(parseRoute());
@@ -126,11 +127,7 @@ function renderShopifyChrome(pageMarkup, route) {
     staticNavItem('card', 'Finance') +
     staticNavItem('analytics', 'Analytics');
   const appTitle = '<div class="shopify-app-title"><button type="button" class="shopify-app-home' + (activeName === 'home' ? ' is-home' : '') + '" data-route="home"' + (activeName === 'home' ? ' aria-current="page"' : '') + '><span class="bestcheckout-mark">B</span><strong>BestCheckout</strong></button><span class="shopify-more-static" aria-hidden="true">' + icon('more', 16) + '</span></div>';
-  const fullscreenLabel = focusScope === 'canvas' ? 'Full-screen canvas' : 'Full-screen editor';
   const exitFullscreenLabel = focusScope === 'canvas' ? 'Exit full-screen canvas' : 'Exit full-screen editor';
-  const focusToggle = focusScope === 'canvas' && !focusActive
-    ? '<button type="button" class="focus-mode-toggle" data-action="toggle-focus-mode" data-focus-scope="' + focusScope + '" aria-pressed="false">' + icon('expand', 16) + '<span>' + escapeHtml(translate(fullscreenLabel, state.ui.locale)) + '</span></button>'
-    : '';
   const exitAction = editorMode ? 'exit-editor-window' : 'toggle-focus-mode';
   const exitLabel = editorMode ? (state.ui.locale === 'zh' ? '返回页面库' : 'Back to Pages') : exitFullscreenLabel;
   const appWindowBar = focusActive
@@ -153,7 +150,7 @@ function renderShopifyChrome(pageMarkup, route) {
           '<div class="shopify-sidebar-footer" data-i18n-skip>' + staticNavItem('settings', 'Settings') + '</div>' +
         '</aside>' +
         '<section class="embedded-app' + (editorMode ? ' embedded-app-editor' : '') + (focusActive ? ' embedded-app-focus' : '') + '">' +
-          '<header class="embedded-titlebar" data-i18n-skip><button type="button" class="embedded-app-home" data-route="home"><span class="bestcheckout-mark">B</span><strong>BestCheckout</strong></button><div class="embedded-title-actions">' + (focusActive ? '' : focusToggle) + '<div class="mobile-language-widget">' + languageSwitcher + '</div><span class="shopify-more-static">' + icon('more', 18) + '</span></div></header>' +
+          '<header class="embedded-titlebar" data-i18n-skip><button type="button" class="embedded-app-home" data-route="home"><span class="bestcheckout-mark">B</span><strong>BestCheckout</strong></button><div class="embedded-title-actions"><div class="mobile-language-widget">' + languageSwitcher + '</div><span class="shopify-more-static">' + icon('more', 18) + '</span></div></header>' +
           '<nav class="mobile-app-nav" aria-label="BestCheckout navigation">' + appNav + '</nav>' +
           '<main id="page-root" class="page-root' + (editorMode ? ' page-root-editor' : '') + '" tabindex="-1">' + pageMarkup + '</main>' +
           '<div class="desktop-language-floating" data-i18n-skip>' + languageSwitcher + '</div>' +
@@ -208,24 +205,159 @@ function showToast(message, tone) {
   toastTimer = window.setTimeout(function () { toastRoot.innerHTML = ''; }, 4200);
 }
 
-function openModal(markup) {
-  modalReturnFocus = document.activeElement;
+function syncOfferProductPicker(form) {
+  if (!form) return;
+  const picker = form.querySelector('.product-choice-list');
+  if (!picker) return;
+  const isZh = state.ui.locale === 'zh';
+  let current = picker.querySelector('[data-offer-product-current]');
+  let options = picker.querySelector('[data-offer-product-options]');
+  if (!current) {
+    const legend = picker.querySelector('legend');
+    const originalChildren = Array.from(picker.children).filter(function (child) { return child !== legend; });
+    current = document.createElement('div');
+    current.className = 'offer-product-current';
+    current.dataset.offerProductCurrent = '';
+    current.innerHTML = '<div><small>' + (isZh ? '当前优惠商品' : 'Current offer product') + '</small><strong data-offer-selected-name></strong><span data-offer-selected-meta></span></div><button type="button" class="button button-secondary" data-action="open-offer-product-picker"><span>' + (isZh ? '选择商品' : 'Choose product') + '</span></button>';
+    options = document.createElement('div');
+    options.className = 'offer-product-options';
+    options.dataset.offerProductOptions = '';
+    originalChildren.forEach(function (child) { options.appendChild(child); });
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'offer-product-search';
+    search.dataset.offerProductSearch = '';
+    search.placeholder = isZh ? '搜索可选商品' : 'Search eligible products';
+    search.setAttribute('aria-label', search.placeholder);
+    const firstChoice = options.querySelector('.product-choice');
+    if (firstChoice) options.insertBefore(search, firstChoice);
+    else options.appendChild(search);
+    if (legend) {
+      legend.textContent = isZh ? '1. 选择优惠商品' : '1. Select offer product';
+      legend.insertAdjacentElement('afterend', current);
+    } else {
+      picker.appendChild(current);
+    }
+    current.insertAdjacentElement('afterend', options);
+  }
+  const selected = picker.querySelector('[name="targetVariantId"]:checked');
+  const selectedCard = selected && selected.closest('.product-choice');
+  const name = selectedCard && selectedCard.querySelector('strong');
+  const meta = selectedCard && selectedCard.querySelector('small');
+  const selectedName = current.querySelector('[data-offer-selected-name]');
+  const selectedMeta = current.querySelector('[data-offer-selected-meta]');
+  if (selectedName) selectedName.textContent = name ? name.textContent.trim() : '';
+  if (selectedMeta) selectedMeta.textContent = meta ? meta.textContent.trim() : '';
+  const rulesLegend = form.querySelector('.offer-rule-fields legend');
+  if (rulesLegend) rulesLegend.textContent = isZh ? '2. 设置展示条件' : '2. Set display conditions';
+}
+
+function renderOfferProductPickerModal(selectedId) {
+  const isZh = state.ui.locale === 'zh';
+  const variants = state.offerCatalogVariants.filter(function (variant) { return variant.mapped && variant.inventoryState === 'Available'; });
+  const rows = variants.map(function (variant) {
+    const selected = variant.id === selectedId;
+    return '<button type="button" class="offer-product-picker-option' + (selected ? ' is-selected' : '') + '" data-action="select-offer-product" data-product-id="' + escapeHtml(variant.id) + '" data-offer-product-option aria-pressed="' + selected + '"><span><strong>' + escapeHtml(variant.name) + '</strong><small>' + escapeHtml(variant.markets.join(' · ') + ' · ' + (isZh ? '有货' : 'In stock')) + '</small></span><em>' + escapeHtml(selected ? (isZh ? '已选' : 'Selected') : (isZh ? '选择' : 'Choose')) + '</em></button>';
+  }).join('');
+  return '<div class="modal-backdrop"><section class="modal offer-product-picker-modal" role="dialog" aria-modal="true" aria-labelledby="offer-product-picker-title"><header class="modal-header"><div><h2 id="offer-product-picker-title">' + escapeHtml(isZh ? '选择优惠商品' : 'Choose offer product') + '</h2><p>' + escapeHtml(isZh ? '只显示已同步且有货的商品。选择后会返回优惠设置。' : 'Only synced, in-stock products are shown. Your selection returns to the offer settings.') + '</p></div><button type="button" class="icon-button" data-action="back-offer-product-picker" aria-label="' + escapeHtml(isZh ? '返回' : 'Back') + '">×</button></header><div class="modal-body"><input type="search" class="offer-product-picker-search" data-offer-product-search aria-label="' + escapeHtml(isZh ? '搜索可选商品' : 'Search eligible products') + '" placeholder="' + escapeHtml(isZh ? '搜索可选商品' : 'Search eligible products') + '"/><div class="offer-product-picker-list" data-offer-product-picker-list>' + rows + '</div></div><footer class="modal-footer"><button type="button" class="button button-secondary" data-action="back-offer-product-picker">' + escapeHtml(isZh ? '返回优惠设置' : 'Back to offer settings') + '</button></footer></section></div>';
+}
+
+function captureOfferProductDraft(form) {
+  return {
+    targetVariantId: form.querySelector('[name="targetVariantId"]:checked')?.value || '',
+    price: form.querySelector('[name="price"]')?.value || '',
+    sourceProductId: form.querySelector('[name="sourceProductId"]')?.value || '',
+    markets: form.querySelector('[name="markets"]')?.value || '',
+    pageId: form.querySelector('[name="pageId"]')?.value || '',
+  };
+}
+
+function restoreOfferProductDraft(draft, selectedId) {
+  const form = modalRoot.querySelector('#add-offer-form');
+  if (!form || !draft) return;
+  const values = Object.assign({}, draft, selectedId ? { targetVariantId: selectedId } : {});
+  ['price', 'sourceProductId', 'markets', 'pageId'].forEach(function (name) {
+    const field = form.querySelector('[name="' + name + '"]');
+    if (field && values[name] !== undefined) field.value = values[name];
+  });
+  const target = form.querySelector('[name="targetVariantId"][value="' + values.targetVariantId + '"]');
+  if (target) target.checked = true;
+  syncOfferProductPicker(form);
+}
+
+function syncOfferDisplaySummary(form) {
+  if (!form) return;
+  const isZh = state.ui.locale === 'zh';
+  const sourceField = form.querySelector('[name="sourceProductId"]');
+  const marketField = form.querySelector('[name="markets"]');
+  const offerKind = form.querySelector('[name="offerKind"]')?.value;
+  let summary = form.querySelector('[data-offer-display-summary]');
+  if (!summary) {
+    summary = document.createElement('section');
+    summary.className = 'offer-display-summary';
+    summary.dataset.offerDisplaySummary = '';
+    summary.innerHTML = '<div class="offer-display-summary-head"><strong>' + (isZh ? '展示给谁' : 'Who sees this offer') + '</strong><small>' + (isZh ? '只有同时满足以下条件的买家，才会看到当前选中的优惠商品。' : 'Buyers see the selected offer only when all of these conditions are met.') + '</small></div><div class="offer-display-summary-chips"><span data-offer-display-timing></span><span data-offer-display-source></span><span data-offer-display-market></span><span>' + (isZh ? '所选商品有货' : 'Selected product in stock') + '</span></div><p>' + (isZh ? '下方仅列出已同步且有货的可选商品；买家不会同时看到整张列表。' : 'The list below contains eligible products only; buyers see just the one you select.') + '</p>';
+    const placement = form.querySelector('.offer-placement');
+    if (placement) placement.insertAdjacentElement('afterend', summary);
+  }
+  const sourceName = sourceField && sourceField.selectedOptions[0] ? sourceField.selectedOptions[0].textContent.trim() : '';
+  const marketName = marketField && marketField.selectedOptions[0] ? marketField.selectedOptions[0].textContent.trim() : '';
+  const sourceCopy = sourceField && sourceField.value === 'bs_product_cart_context'
+    ? (isZh ? '任意完成付款的购物车' : 'Any paid cart')
+    : (isZh ? '订单包含 ' : 'Order includes ') + sourceName;
+  const timingCopy = offerKind === 'downsell'
+    ? (isZh ? '上一项优惠被拒绝后' : 'After the previous offer is declined')
+    : (isZh ? '结账支付完成后' : 'After checkout is paid');
+  const timing = summary.querySelector('[data-offer-display-timing]');
+  const source = summary.querySelector('[data-offer-display-source]');
+  const market = summary.querySelector('[data-offer-display-market]');
+  if (timing) timing.textContent = timingCopy;
+  if (source) source.textContent = sourceCopy;
+  if (market) market.textContent = marketName;
+}
+
+function renderModal(markup) {
   modalRoot.innerHTML = markup;
   appRoot.setAttribute('aria-hidden', 'true');
   appRoot.inert = true;
   document.body.classList.add('modal-open');
   applyLocale(modalRoot, state.ui.locale);
+  syncOfferProductPicker(modalRoot.querySelector('#add-offer-form'));
   const first = modalRoot.querySelector('input, select, button');
   if (first) first.focus();
 }
 
+function openModal(markup, options) {
+  const context = options || {};
+  if (context.returnToParent && modalRoot.innerHTML) {
+    modalHistory.push({ markup: modalRoot.innerHTML, returnFocus: modalReturnFocus });
+  } else {
+    modalHistory = [];
+    modalReturnFocus = document.activeElement;
+  }
+  renderModal(markup);
+}
+
 function closeModal() {
+  modalHistory = [];
   modalRoot.innerHTML = '';
   appRoot.removeAttribute('aria-hidden');
   appRoot.inert = false;
   document.body.classList.remove('modal-open');
   if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') modalReturnFocus.focus();
   modalReturnFocus = null;
+}
+
+function dismissModal() {
+  const previous = modalHistory.pop();
+  if (!previous) {
+    closeModal();
+    return;
+  }
+  modalReturnFocus = previous.returnFocus;
+  renderModal(previous.markup);
+  const returnTrigger = modalRoot.querySelector('[data-action="edit-funnel-entry"]');
+  if (returnTrigger) returnTrigger.focus();
 }
 
 function activeFunnel() {
@@ -596,17 +728,22 @@ function initialAudienceForPreset(preset, locale) {
       cartItems: ['Cart item count', 'is at least', 'Items'], cartTotal: ['Cart total', 'is at least', 'Cart'], country: ['Country or region', 'is one of', 'Market'],
       utmSource: ['UTM source', 'contains', 'UTM source'], signedIn: ['Signed-in status', 'is', 'Account'], pastOrders: ['Past orders', 'is at least', 'Orders'],
     };
+  labels.cartContains = isZh
+    ? ['购物车商品', '包含任一所选商品', '商品']
+    : ['Cart products', 'contains any selected product', 'Product'];
   const from = function (key, field, operator, value) {
     return rule(field, operator, value, labels[key][0], labels[key][1], labels[key][2]);
   };
   const presets = {
     all_carts: [from('cartItems', 'cart_items', 'at_least', '1')],
     cart_value: [from('cartTotal', 'cart_total', 'at_least', '$60')],
-    market_device: [from('country', 'country', 'one_of', isZh ? '美国, 加拿大' : 'United States, Canada')],
-    campaign: [from('utmSource', 'utm_source', 'contains', 'facebook')],
+    storefront_context: [from('country', 'country', 'is', isZh ? '美国' : 'United States')],
+    specific_product: [from('cartContains', 'cart_contains', 'contains', 'Nighttime Gummies')],
     known_customer: [from('signedIn', 'logged_in', 'is', isZh ? '已登录' : 'Signed in'), from('pastOrders', 'past_orders', 'at_least', '1')],
     custom: [from('cartItems', 'cart_items', 'at_least', '1')],
   };
+  presets.market_device = presets.storefront_context;
+  presets.campaign = presets.specific_product;
   const conditions = presets[preset] || presets.all_carts;
   return {
     conditions: conditions,
@@ -679,7 +816,7 @@ function handleAction(action, element) {
     return;
   }
   if (action === 'close-modal') {
-    closeModal();
+    dismissModal();
     return;
   }
   if (action === 'open-create-funnel') {
@@ -808,7 +945,7 @@ function handleAction(action, element) {
   }
   if (action === 'edit-funnel-entry') {
     const funnel = state.funnels.find(function (item) { return item.id === element.dataset.funnelId; }) || activeFunnel();
-    openModal(renderFunnelEntryModal(state, funnel));
+    openModal(renderFunnelEntryModal(state, funnel), { returnToParent: Boolean(element.closest('.modal')) });
     return;
   }
   if (action === 'add-audience-rule') {
@@ -819,6 +956,54 @@ function handleAction(action, element) {
     list.insertAdjacentHTML('beforeend', template.innerHTML);
     const field = list.lastElementChild && list.lastElementChild.querySelector('[data-audience-field]');
     if (field) field.focus();
+    return;
+  }
+  if (action === 'toggle-audience-product-picker') {
+    const control = element.closest('[data-audience-product-control]');
+    if (!control) return;
+    const isOpen = !control.classList.contains('is-open');
+    closeAudienceProductPickers(control);
+    control.classList.toggle('is-open', isOpen);
+    element.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) {
+      const search = control.querySelector('[data-audience-product-search]');
+      if (search) search.focus();
+    }
+    return;
+  }
+  if (action === 'open-offer-product-picker') {
+    const form = element.closest('#add-offer-form');
+    if (!form) return;
+    state.ui.offerProductPickerDraft = captureOfferProductDraft(form);
+    openModal(renderOfferProductPickerModal(state.ui.offerProductPickerDraft.targetVariantId), { returnToParent: true });
+    return;
+  }
+  if (action === 'select-offer-product' || action === 'back-offer-product-picker') {
+    const draft = state.ui.offerProductPickerDraft;
+    const selectedId = action === 'select-offer-product' ? element.dataset.productId : '';
+    state.ui.offerProductPickerDraft = null;
+    dismissModal();
+    restoreOfferProductDraft(draft, selectedId);
+    return;
+  }
+  if (action === 'remove-audience-product') {
+    const control = element.closest('[data-audience-product-control]');
+    const chip = element.closest('[data-audience-product-chip]');
+    if (!control || !chip) return;
+    const productId = chip.dataset.productId || '';
+    const option = Array.from(control.querySelectorAll('[data-audience-product-option]')).find(function (input) { return input.value === productId; });
+    if (option) option.checked = false;
+    syncAudienceProductValue(control, true);
+    return;
+  }
+  if (action === 'remove-audience-tag') {
+    const editor = element.closest('[data-audience-tag-editor]');
+    const chip = element.closest('[data-audience-tag-chip]');
+    if (!editor || !chip) return;
+    chip.remove();
+    syncAudienceTagValue(editor);
+    const input = editor.querySelector('[data-audience-tag-input]');
+    if (input) input.focus();
     return;
   }
   if (action === 'remove-audience-rule') {
@@ -1461,7 +1646,7 @@ function bindFormSubmissions(event) {
       id: id,
       name: data.get('name'),
       status: FUNNEL_STATUS.DRAFT,
-      priority: (Math.max.apply(null, state.funnels.map(function (item) { return item.priority || 0; })) || 0) + 10,
+      priority: (Math.max.apply(null, state.funnels.filter(function (item) { return !item.isDefault; }).map(function (item) { return item.priority || 0; })) || 0) + 10,
       conflictPolicy: 'first_match_by_priority',
       audiencePreset: audiencePreset,
       audience: initialAudience.audience,
@@ -1495,7 +1680,7 @@ function bindFormSubmissions(event) {
     state.ui.activeNodeId = 'shopify-cart';
     state.ui.funnelWizard = null;
     closeModal();
-    setRoute('funnels');
+    setRoute('funnels/' + id);
     showToast('Draft funnel created with Shopify native checkout as the pre-payment safety route.');
     return;
   }
@@ -1619,29 +1804,65 @@ function bindFormSubmissions(event) {
       return;
     }
     const audienceRows = Array.from(form.querySelectorAll('[data-audience-rule]'));
+    let audienceValidationMessage = '';
     const audienceConditions = audienceRows.map(function (row) {
       const field = row.querySelector('[name="audienceField"]');
       const operator = row.querySelector('[name="audienceOperator"]');
       const value = row.querySelector('[name="audienceValue"]');
+      const rangeMax = row.querySelector('[data-audience-range-max]');
       const fieldOption = field && field.selectedOptions[0];
       const operatorOption = operator && operator.selectedOptions[0];
+      const min = value ? value.value.trim() : '';
+      const max = rangeMax ? rangeMax.value.trim() : '';
+      const valueKind = fieldOption ? fieldOption.dataset.valueKind : '';
+      const numericPattern = valueKind === 'integer' ? /^\d+$/ : valueKind === 'money' ? /^\d+(?:\.\d{1,2})?$/ : valueKind === 'days' ? /^[1-9]\d*$/ : null;
+      const invalidNumber = numericPattern && !numericPattern.test(min);
+      const invalidRange = rangeMax && (invalidNumber || !numericPattern || !numericPattern.test(max) || Number(min) > Number(max));
+      const selectedProducts = valueKind === 'products' ? audienceProductEntries(min) : [];
+      if (valueKind === 'products' && !selectedProducts.length) {
+        const productControl = row.querySelector('[data-audience-product-control]');
+        if (productControl) syncAudienceProductValue(productControl, true);
+        audienceValidationMessage = state.ui.locale === 'zh' ? '至少选择 1 个商品。' : 'Select at least one product.';
+        return null;
+      }
+      if (invalidNumber || invalidRange) {
+        const isMoney = valueKind === 'money';
+        const isDays = valueKind === 'days';
+        audienceValidationMessage = state.ui.locale === 'zh'
+          ? (isMoney ? (rangeMax ? '请填写有效的消费金额范围：最小值不能大于最大值。' : '请输入有效的消费金额。') : (isDays ? '请输入有效的天数（至少为 1 天）。' : (rangeMax ? '请填写有效的订单数范围：最小值不能大于最大值。' : '请输入有效的订单数。')))
+          : (isMoney ? (rangeMax ? 'Enter a valid spend range: the minimum cannot exceed the maximum.' : 'Enter a valid spend amount.') : (isDays ? 'Enter a whole number of days (at least 1).' : (rangeMax ? 'Enter a valid order range: the minimum cannot exceed the maximum.' : 'Enter a valid order count.')));
+        return null;
+      }
+      const formattedMin = valueKind === 'money' ? '$' + min : min;
+      const formattedMax = valueKind === 'money' ? '$' + max : max;
+      const storedValue = valueKind === 'products'
+        ? JSON.stringify(selectedProducts.map(function (product) { return product.id; }))
+        : (rangeMax ? formattedMin + '–' + formattedMax : formattedMin);
+      const displayValue = valueKind === 'products'
+        ? selectedProducts.map(function (product) { return product.name; }).join(', ')
+        : (valueKind === 'days' ? min + (state.ui.locale === 'zh' ? ' 天' : ' days') : storedValue);
       return {
         field: field ? field.value : '',
         operator: operator ? operator.value : '',
-        value: value ? value.value.trim() : '',
+        value: storedValue,
+        displayValue: displayValue,
         fieldLabel: fieldOption ? fieldOption.textContent.trim() : '',
         operatorLabel: operatorOption ? operatorOption.textContent.trim() : '',
         shortLabel: fieldOption ? (fieldOption.dataset.short || fieldOption.textContent.trim()) : '',
       };
-    }).filter(function (rule) { return rule.field && rule.operator && rule.value; });
+    }).filter(function (rule) { return rule && rule.field && rule.operator && rule.value; });
+    if (audienceValidationMessage) {
+      showToast(audienceValidationMessage, 'critical');
+      return;
+    }
     if (!audienceConditions.length || audienceConditions.length !== audienceRows.length) {
       showToast(state.ui.locale === 'zh' ? '请完整填写每个受众条件。' : 'Complete every audience condition.', 'critical');
       return;
     }
     funnel.priority = priority;
     funnel.audienceConditions = audienceConditions;
-    funnel.rules = audienceConditions.map(function (rule) { return rule.fieldLabel + ' ' + rule.operatorLabel + ' ' + rule.value; });
-    funnel.audience = audienceConditions.map(function (rule) { return rule.shortLabel + ' ' + rule.operatorLabel + ' ' + rule.value; }).join(' · ');
+    funnel.rules = audienceConditions.map(function (rule) { return rule.fieldLabel + ' ' + rule.operatorLabel + ' ' + (rule.displayValue || rule.value); });
+    funnel.audience = audienceConditions.map(function (rule) { return rule.shortLabel + ' ' + rule.operatorLabel + ' ' + (rule.displayValue || rule.value); }).join(' · ');
     markFunnelRevision(funnel);
     closeModal();
     renderShell();
@@ -1806,6 +2027,24 @@ function bindFormSubmissions(event) {
 }
 
 function handleInput(event) {
+  if (event.target.matches('[data-offer-product-search]')) {
+    const picker = event.target.closest('.offer-product-picker-modal');
+    if (!picker) return;
+    const query = event.target.value.trim().toLowerCase();
+    picker.querySelectorAll('[data-offer-product-option]').forEach(function (choice) {
+      choice.hidden = Boolean(query) && !choice.textContent.toLowerCase().includes(query);
+    });
+    return;
+  }
+  if (event.target.matches('[data-audience-product-search]')) {
+    const control = event.target.closest('[data-audience-product-control]');
+    if (!control) return;
+    const query = event.target.value.trim().toLowerCase();
+    control.querySelectorAll('[data-audience-product-option-row]').forEach(function (row) {
+      row.hidden = Boolean(query) && !row.textContent.toLowerCase().includes(query);
+    });
+    return;
+  }
   if (event.target.matches('[data-activity-search]')) {
     const query = event.target.value.trim().toLowerCase();
     const events = appRoot.querySelectorAll('.timeline-event');
@@ -1850,19 +2089,364 @@ function handleInput(event) {
   }
 }
 
+function audienceTagValues(value) {
+  return String(value || '').split(',').map(function (item) { return item.trim(); }).filter(Boolean);
+}
+
+function audienceProductValues(value) {
+  const normalise = function (items) {
+    return Array.from(new Set(items.filter(function (item) { return typeof item === 'string' && item.trim(); }).map(function (item) { return item.trim(); })));
+  };
+  if (Array.isArray(value)) return normalise(value);
+  const source = String(value || '').trim();
+  if (!source) return [];
+  try {
+    const parsed = JSON.parse(source);
+    if (Array.isArray(parsed)) return normalise(parsed);
+  } catch (error) {
+    // Legacy rules stored product names; map those names to their current IDs.
+  }
+  return normalise(source.split(',').map(function (name) {
+    const product = (state.offerCatalogVariants || []).find(function (item) { return item.name === name.trim(); });
+    return product ? product.id : name.trim();
+  }));
+}
+
+function audienceProductEntries(value) {
+  return audienceProductValues(value).map(function (id) {
+    return (state.offerCatalogVariants || []).find(function (product) { return product.id === id; }) || { id: id, name: id };
+  });
+}
+
+function syncAudienceProductValue(control, showEmptyError) {
+  const hidden = control.querySelector('[data-audience-product-value]');
+  const selected = Array.from(control.querySelectorAll('[data-audience-product-option]:checked')).map(function (input) { return input.value; });
+  const entries = audienceProductEntries(selected);
+  if (hidden) hidden.value = JSON.stringify(selected);
+  const summary = control.querySelector('[data-audience-product-summary]');
+  if (summary) {
+    summary.innerHTML = '';
+    if (!selected.length) {
+      const placeholder = document.createElement('span');
+      placeholder.className = 'audience-product-placeholder';
+      placeholder.dataset.audienceProductPlaceholder = '';
+      placeholder.textContent = state.ui.locale === 'zh' ? '还未选择商品' : 'No products selected';
+      summary.appendChild(placeholder);
+    } else {
+      entries.forEach(function (product) {
+        const chip = document.createElement('span');
+        chip.className = 'audience-product-chip';
+        chip.dataset.audienceProductChip = '';
+        chip.dataset.productId = product.id;
+        const label = document.createElement('span');
+        label.textContent = product.name;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.dataset.action = 'remove-audience-product';
+        remove.setAttribute('aria-label', (state.ui.locale === 'zh' ? '移除商品 ' : 'Remove product ') + product.name);
+        remove.textContent = '×';
+        chip.append(label, remove);
+        summary.appendChild(chip);
+      });
+    }
+  }
+  const triggerLabel = control.querySelector('[data-action="toggle-audience-product-picker"] > span');
+  if (triggerLabel) triggerLabel.textContent = selected.length
+    ? (state.ui.locale === 'zh' ? '已选 ' + selected.length + ' 个商品' : selected.length + ' products selected')
+    : (state.ui.locale === 'zh' ? '选择商品' : 'Choose products');
+  const error = control.querySelector('[data-audience-product-error]');
+  const shouldShowError = Boolean(showEmptyError && !selected.length);
+  control.classList.toggle('has-error', shouldShowError);
+  if (error) error.hidden = !shouldShowError;
+}
+
+function syncAudienceTagValue(editor) {
+  const hidden = editor.querySelector('[data-audience-tag-value]');
+  const tags = Array.from(editor.querySelectorAll('[data-audience-tag-chip]')).map(function (chip) { return chip.dataset.tag || ''; }).filter(Boolean);
+  if (hidden) hidden.value = tags.join(', ');
+}
+
+function createAudienceTagChip(tag) {
+  const chip = document.createElement('span');
+  chip.className = 'audience-tag-chip';
+  chip.dataset.audienceTagChip = '';
+  chip.dataset.tag = tag;
+  const label = document.createElement('span');
+  label.textContent = tag;
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.dataset.action = 'remove-audience-tag';
+  remove.setAttribute('aria-label', (state.ui.locale === 'zh' ? '移除标签 ' : 'Remove tag ') + tag);
+  remove.textContent = '×';
+  chip.append(label, remove);
+  return chip;
+}
+
+function createAudienceTagEditor(value) {
+  const editor = document.createElement('div');
+  editor.className = 'audience-tag-editor';
+  editor.dataset.audienceTagEditor = '';
+  const list = document.createElement('div');
+  list.className = 'audience-tag-list';
+  audienceTagValues(value).forEach(function (tag) { list.appendChild(createAudienceTagChip(tag)); });
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden';
+  hidden.name = 'audienceValue';
+  hidden.required = true;
+  hidden.dataset.audienceTagValue = '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.dataset.audienceTagInput = '';
+  input.placeholder = state.ui.locale === 'zh' ? '输入标签后按 Enter' : 'Type a tag and press Enter';
+  input.setAttribute('aria-label', state.ui.locale === 'zh' ? '添加客户标签' : 'Add customer tag');
+  editor.append(list, hidden, input);
+  syncAudienceTagValue(editor);
+  return editor;
+}
+
+function createAudienceProductControl(value) {
+  const selected = audienceProductValues(value);
+  const control = document.createElement('div');
+  control.className = 'audience-product-control';
+  control.dataset.audienceProductControl = '';
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden';
+  hidden.name = 'audienceValue';
+  hidden.required = true;
+  hidden.dataset.audienceProductValue = '';
+  hidden.value = JSON.stringify(selected);
+  const summary = document.createElement('div');
+  summary.className = 'audience-product-summary';
+  summary.dataset.audienceProductSummary = '';
+  audienceProductEntries(selected).forEach(function (product) {
+    const chip = document.createElement('span');
+    chip.className = 'audience-product-chip';
+    chip.dataset.audienceProductChip = '';
+    chip.dataset.productId = product.id;
+    const label = document.createElement('span');
+    label.textContent = product.name;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.dataset.action = 'remove-audience-product';
+    remove.setAttribute('aria-label', (state.ui.locale === 'zh' ? '移除商品 ' : 'Remove product ') + product.name);
+    remove.textContent = '×';
+    chip.append(label, remove);
+    summary.appendChild(chip);
+  });
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'audience-product-trigger';
+  trigger.dataset.action = 'toggle-audience-product-picker';
+  trigger.setAttribute('aria-expanded', 'false');
+  const triggerLabel = document.createElement('span');
+  trigger.appendChild(triggerLabel);
+  const menu = document.createElement('div');
+  menu.className = 'audience-product-menu';
+  menu.dataset.audienceProductMenu = '';
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.dataset.audienceProductSearch = '';
+  search.setAttribute('aria-label', state.ui.locale === 'zh' ? '搜索商品' : 'Search products');
+  search.placeholder = state.ui.locale === 'zh' ? '搜索商品' : 'Search products';
+  const options = document.createElement('div');
+  options.className = 'audience-product-option-list';
+  options.dataset.audienceProductOptions = '';
+  (state.offerCatalogVariants || []).forEach(function (product) {
+    const row = document.createElement('label');
+    row.className = 'audience-product-option';
+    row.dataset.audienceProductOptionRow = '';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = product.id;
+    input.dataset.productName = product.name;
+    input.dataset.audienceProductOption = '';
+    input.checked = selected.includes(product.id);
+    const details = document.createElement('span');
+    const name = document.createElement('strong');
+    name.textContent = product.name;
+    const meta = document.createElement('small');
+    meta.textContent = (product.markets || []).join(' · ') + ' · ' + (state.ui.locale === 'zh' ? (product.inventoryState === 'Available' ? '有货' : '缺货') : product.inventoryState);
+    details.append(name, meta);
+    row.append(input, details);
+    options.appendChild(row);
+  });
+  menu.append(search, options);
+  const error = document.createElement('small');
+  error.className = 'audience-product-error';
+  error.dataset.audienceProductError = '';
+  error.hidden = true;
+  error.textContent = state.ui.locale === 'zh' ? '至少选择 1 个商品' : 'Select at least one product';
+  control.append(hidden, summary, trigger, menu, error);
+  syncAudienceProductValue(control);
+  return control;
+}
+
+function addAudienceTags(editor, value) {
+  const list = editor.querySelector('.audience-tag-list');
+  if (!list) return { added: 0, duplicate: 0 };
+  const existing = new Set(Array.from(list.querySelectorAll('[data-audience-tag-chip]')).map(function (chip) { return (chip.dataset.tag || '').toLocaleLowerCase(); }));
+  let added = 0;
+  let duplicate = 0;
+  audienceTagValues(value).forEach(function (tag) {
+    if (existing.has(tag.toLocaleLowerCase())) {
+      duplicate += 1;
+      return;
+    }
+    existing.add(tag.toLocaleLowerCase());
+    list.appendChild(createAudienceTagChip(tag));
+    added += 1;
+  });
+  if (added) syncAudienceTagValue(editor);
+  return { added: added, duplicate: duplicate };
+}
+
+function audienceIntegerParts(value) {
+  const parts = String(value || '').split(/\s*(?:–|\.\.)\s*/);
+  return { min: /^\d+$/.test(parts[0] || '') ? parts[0] : '', max: /^\d+$/.test(parts[1] || '') ? parts[1] : '' };
+}
+
+function createAudienceIntegerControl(value, placeholder, isRange) {
+  const parts = audienceIntegerParts(value);
+  const min = parts.min || placeholder;
+  const createInput = function (inputValue, label) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.step = '1';
+    input.inputMode = 'numeric';
+    input.value = inputValue;
+    input.placeholder = label;
+    input.required = true;
+    return input;
+  };
+  if (!isRange) {
+    const input = createInput(min, placeholder);
+    input.name = 'audienceValue';
+    input.dataset.audienceValue = '';
+    input.dataset.audiencePlaceholder = placeholder;
+    input.setAttribute('aria-label', state.ui.locale === 'zh' ? '条件值' : 'Condition value');
+    return input;
+  }
+  const control = document.createElement('div');
+  control.className = 'audience-number-range';
+  control.dataset.audienceNumberRange = '';
+  const minInput = createInput(min, state.ui.locale === 'zh' ? '最小值' : 'Minimum value');
+  minInput.name = 'audienceValue';
+  minInput.dataset.audienceValue = '';
+  minInput.dataset.audiencePlaceholder = placeholder;
+  minInput.setAttribute('aria-label', state.ui.locale === 'zh' ? '最小值' : 'Minimum value');
+  const separator = document.createElement('span');
+  separator.textContent = state.ui.locale === 'zh' ? '至' : 'to';
+  const maxInput = createInput(parts.max, state.ui.locale === 'zh' ? '最大值' : 'Maximum value');
+  maxInput.dataset.audienceRangeMax = '';
+  maxInput.setAttribute('aria-label', state.ui.locale === 'zh' ? '最大值' : 'Maximum value');
+  control.append(minInput, separator, maxInput);
+  return control;
+}
+
+function createAudienceDaysControl(value, placeholder) {
+  const parsed = String(value || '').trim();
+  const days = /^[1-9]\d*$/.test(parsed) ? parsed : (String(placeholder || '30').trim() || '30');
+  const control = document.createElement('span');
+  control.className = 'audience-days-field';
+  control.dataset.audienceDaysControl = '';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '1';
+  input.step = '1';
+  input.inputMode = 'numeric';
+  input.name = 'audienceValue';
+  input.value = days;
+  input.placeholder = placeholder || '30';
+  input.required = true;
+  input.dataset.audienceValue = '';
+  input.dataset.audiencePlaceholder = placeholder || '30';
+  input.setAttribute('aria-label', state.ui.locale === 'zh' ? '距最近一次下单的天数' : 'Days since last order');
+  const unit = document.createElement('em');
+  unit.textContent = state.ui.locale === 'zh' ? '天' : 'days';
+  control.append(input, unit);
+  return control;
+}
+
+function audienceMoneyParts(value) {
+  const parts = String(value || '').replace(/\$/g, '').split(/\s*(?:–|\.\.)\s*/);
+  const normalized = function (part) { return /^\d+(?:\.\d{1,2})?$/.test(part || '') ? part : ''; };
+  return { min: normalized(parts[0]), max: normalized(parts[1]) };
+}
+
+function createAudienceMoneyControl(value, placeholder, isRange) {
+  const parts = audienceMoneyParts(value);
+  const defaultValue = String(placeholder || '').replace(/^\$/, '');
+  const min = parts.min || defaultValue;
+  const createField = function (inputValue, label) {
+    const field = document.createElement('span');
+    field.className = 'audience-money-field';
+    const symbol = document.createElement('b');
+    symbol.textContent = '$';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.step = '0.01';
+    input.inputMode = 'decimal';
+    input.value = inputValue;
+    input.placeholder = defaultValue;
+    input.required = true;
+    input.setAttribute('aria-label', label);
+    field.append(symbol, input);
+    return { field: field, input: input };
+  };
+  const singleLabel = state.ui.locale === 'zh' ? '消费金额（USD）' : 'Spend amount (USD)';
+  if (!isRange) {
+    const single = createField(min, singleLabel);
+    single.field.dataset.audienceMoneyControl = '';
+    single.input.name = 'audienceValue';
+    single.input.dataset.audienceValue = '';
+    single.input.dataset.audiencePlaceholder = placeholder;
+    return single.field;
+  }
+  const control = document.createElement('div');
+  control.className = 'audience-number-range';
+  control.dataset.audienceNumberRange = '';
+  control.dataset.audienceMoneyControl = '';
+  const minField = createField(min, state.ui.locale === 'zh' ? '最低消费金额（USD）' : 'Minimum spend (USD)');
+  minField.input.name = 'audienceValue';
+  minField.input.dataset.audienceValue = '';
+  minField.input.dataset.audiencePlaceholder = placeholder;
+  const separator = document.createElement('span');
+  separator.textContent = state.ui.locale === 'zh' ? '至' : 'to';
+  const maxField = createField(parts.max, state.ui.locale === 'zh' ? '最高消费金额（USD）' : 'Maximum spend (USD)');
+  maxField.input.dataset.audienceRangeMax = '';
+  control.append(minField.field, separator, maxField.field);
+  return control;
+}
+
 function handleChange(event) {
+  if (event.target.matches('#add-offer-form [name="targetVariantId"]')) {
+    const form = event.target.closest('#add-offer-form');
+    const picker = form && form.querySelector('.product-choice-list');
+    syncOfferProductPicker(form);
+    if (picker) {
+      picker.classList.remove('is-open');
+      const trigger = picker.querySelector('[data-action="toggle-offer-product-picker"]');
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
+    return;
+  }
+  if (event.target.matches('[data-audience-product-option]')) {
+    const control = event.target.closest('[data-audience-product-control]');
+    if (control) syncAudienceProductValue(control, true);
+    return;
+  }
   if (event.target.matches('[data-audience-field]')) {
     const row = event.target.closest('[data-audience-rule]');
     const value = row && row.querySelector('[name="audienceValue"]');
+    const tagEditor = row && row.querySelector('[data-audience-tag-editor]');
+    const productControl = row && row.querySelector('[data-audience-product-control]');
+    const rangeControl = row && row.querySelector('[data-audience-number-range]');
+    const moneyControl = row && row.querySelector('[data-audience-money-control]');
+    const daysControl = row && row.querySelector('[data-audience-days-control]');
     const operator = row && row.querySelector('[name="audienceOperator"]');
     const option = event.target.selectedOptions[0];
-    if (value && option) {
-      const nextPlaceholder = option.dataset.placeholder || '';
-      const previousPlaceholder = value.dataset.audiencePlaceholder || '';
-      if (!value.value || value.value === previousPlaceholder) value.value = nextPlaceholder;
-      value.placeholder = nextPlaceholder;
-      value.dataset.audiencePlaceholder = nextPlaceholder;
-    }
     if (operator && option) {
       const allowed = (option.dataset.operators || '').split(',').filter(Boolean);
       Array.from(operator.options).forEach(function (item) {
@@ -1870,8 +2454,65 @@ function handleChange(event) {
         item.hidden = !enabled;
         item.disabled = !enabled;
       });
-      if (!allowed.includes(operator.value)) operator.value = allowed[0] || 'is';
+      if (!allowed.includes(operator.value)) operator.value = allowed.includes(option.dataset.defaultOperator) ? option.dataset.defaultOperator : (allowed[0] || 'is');
     }
+    if (value && option) {
+      const nextPlaceholder = option.dataset.placeholder || '';
+      let nextValue = nextPlaceholder;
+      let values = [];
+      try { values = JSON.parse(option.dataset.valueOptions || '[]'); } catch (error) { values = []; }
+      const valueKind = option.dataset.valueKind || '';
+    if (tagEditor || productControl || valueKind === 'tags' || valueKind === 'products') nextValue = (valueKind === 'tags' || valueKind === 'products') ? '' : nextPlaceholder;
+      if (values.length && !values.some(function (item) { return item.value === nextValue; })) nextValue = nextPlaceholder || values[0].value;
+      let nextControl;
+      if (valueKind === 'tags') {
+        nextControl = createAudienceTagEditor(nextValue);
+      } else if (valueKind === 'products') {
+        nextControl = createAudienceProductControl(nextValue);
+      } else if (valueKind === 'integer') {
+        nextControl = createAudienceIntegerControl(nextValue, nextPlaceholder, Boolean(operator && operator.value === 'between'));
+      } else if (valueKind === 'money') {
+        nextControl = createAudienceMoneyControl(nextValue, nextPlaceholder, Boolean(operator && operator.value === 'between'));
+      } else if (valueKind === 'days') {
+        nextControl = createAudienceDaysControl(nextValue, nextPlaceholder);
+      } else if (values.length) {
+        nextControl = document.createElement('select');
+        values.forEach(function (item) {
+          const itemOption = document.createElement('option');
+          itemOption.value = item.value;
+          itemOption.textContent = item.label;
+          itemOption.selected = item.value === nextValue;
+          nextControl.appendChild(itemOption);
+        });
+      } else {
+        nextControl = document.createElement('input');
+        nextControl.type = 'text';
+        nextControl.placeholder = nextPlaceholder;
+        nextControl.value = nextValue;
+      }
+      if (valueKind !== 'tags' && valueKind !== 'products' && valueKind !== 'integer' && valueKind !== 'money' && valueKind !== 'days') {
+        nextControl.name = 'audienceValue';
+        nextControl.required = true;
+        nextControl.dataset.audienceValue = '';
+        nextControl.dataset.audiencePlaceholder = nextPlaceholder;
+        nextControl.setAttribute('aria-label', state.ui.locale === 'zh' ? '条件值' : 'Condition value');
+      }
+      (productControl || tagEditor || moneyControl || daysControl || rangeControl || value).replaceWith(nextControl);
+    }
+    return;
+  }
+  if (event.target.matches('[name="audienceOperator"]')) {
+    const row = event.target.closest('[data-audience-rule]');
+    const field = row && row.querySelector('[data-audience-field]');
+    const fieldOption = field && field.selectedOptions[0];
+    const value = row && row.querySelector('[name="audienceValue"]');
+    const rangeControl = row && row.querySelector('[data-audience-number-range]');
+    if (!fieldOption || !['integer', 'money'].includes(fieldOption.dataset.valueKind) || !value) return;
+    const nextControl = fieldOption.dataset.valueKind === 'money'
+      ? createAudienceMoneyControl(value.value, fieldOption.dataset.placeholder || '', event.target.value === 'between')
+      : createAudienceIntegerControl(value.value, fieldOption.dataset.placeholder || '', event.target.value === 'between');
+    const moneyControl = row && row.querySelector('[data-audience-money-control]');
+    (moneyControl || rangeControl || value).replaceWith(nextControl);
     return;
   }
   if (event.target.matches('[data-change="activity-filter"]')) {
@@ -1915,9 +2556,21 @@ function trapModalFocus(event) {
   }
   const modal = modalRoot.querySelector('.modal');
   if (!modal) return;
+  if (event.target.matches('[data-audience-tag-input]') && event.key === 'Enter') {
+    event.preventDefault();
+    const editor = event.target.closest('[data-audience-tag-editor]');
+    const result = editor ? addAudienceTags(editor, event.target.value) : { added: 0, duplicate: 0 };
+    if (result.added || result.duplicate) {
+      event.target.value = '';
+      if (!result.added && result.duplicate) {
+        showToast(state.ui.locale === 'zh' ? '该标签已添加，无需重复添加。' : 'That tag is already added.');
+      }
+    }
+    return;
+  }
   if (event.key === 'Escape') {
     event.preventDefault();
-    closeModal();
+    dismissModal();
     return;
   }
   if (event.key !== 'Tab') return;
@@ -1958,9 +2611,22 @@ appRoot.addEventListener('pointerup', function (event) {
   if (canvasPanState.canvas.hasPointerCapture(event.pointerId)) canvasPanState.canvas.releasePointerCapture(event.pointerId);
   canvasPanState = null;
 });
+function closeAudienceProductPickers(exceptControl) {
+  modalRoot.querySelectorAll('[data-audience-product-control].is-open').forEach(function (control) {
+    if (control === exceptControl) return;
+    control.classList.remove('is-open');
+    const trigger = control.querySelector('[data-action="toggle-audience-product-picker"]');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  });
+}
+
 modalRoot.addEventListener('click', function (event) {
+  if (!event.target.closest('[data-audience-product-control]')) closeAudienceProductPickers();
   if (event.target.classList.contains('modal-backdrop')) {
-    closeModal();
+    const draft = state.ui.offerProductPickerDraft;
+    state.ui.offerProductPickerDraft = null;
+    dismissModal();
+    restoreOfferProductDraft(draft);
     return;
   }
   handleClick(event);

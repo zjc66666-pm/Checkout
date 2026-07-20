@@ -1558,17 +1558,38 @@ export function translate(value, locale) {
   return value;
 }
 
+function normalizeMerchantTerms(value, locale) {
+  if (!value) return value;
+  if (locale === 'zh') {
+    return value
+      .replace(/Thank-you\s*页面/g, 'Thank you 页面')
+      .replace(/订单确认页/g, 'Thank you 页面')
+      .replace(/订单确认/g, 'Thank you')
+      .replace(/感谢页/g, 'Thank you 页面')
+      .replace(/漏斗/g, '购买流程');
+  }
+  return value
+    .replace(/\bOrder confirmation pages\b/g, 'Thank you pages')
+    .replace(/\bOrder confirmation page\b/g, 'Thank you page')
+    .replace(/\bOrder confirmation\b/g, 'Thank you')
+    .replace(/\bThank-you page\b/g, 'Thank you page')
+    .replace(/\bFunnels\b/g, 'Purchase flows')
+    .replace(/\bFunnel\b/g, 'Purchase flow')
+    .replace(/\bfunnels\b/g, 'purchase flows')
+    .replace(/\bfunnel\b/g, 'purchase flow');
+}
+
 function replaceTextNode(node, locale) {
   const value = node.nodeValue;
   const match = /^(\s*)(.*?)(\s*)$/s.exec(value);
   if (!match || !match[2]) return;
-  const next = translate(match[2], locale);
+  const next = normalizeMerchantTerms(translate(match[2], locale), locale);
   if (next !== match[2]) node.nodeValue = match[1] + next + match[3];
 }
 
 export function applyLocale(root, locale) {
   if (typeof document !== 'undefined' && document.documentElement) document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
-  if (locale !== 'zh' || !root || typeof document === 'undefined' || typeof NodeFilter === 'undefined') return;
+  if (!root || typeof document === 'undefined' || typeof NodeFilter === 'undefined') return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const textNodes = [];
   let node = walker.nextNode();
@@ -1582,11 +1603,12 @@ export function applyLocale(root, locale) {
     ['aria-label', 'placeholder', 'title', 'data-label'].forEach(function (attribute) {
       const value = element.getAttribute(attribute);
       if (!value) return;
-      const localized = ZH_ATTRIBUTES[value] || translate(value, locale);
+      const translated = locale === 'zh' ? (ZH_ATTRIBUTES[value] || translate(value, locale)) : value;
+      const localized = normalizeMerchantTerms(translated, locale);
       if (localized !== value) element.setAttribute(attribute, localized);
     });
   });
-  if (document.documentElement) document.documentElement.lang = 'zh-CN';
+  if (document.documentElement) document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
 }
 
 export function renderLanguageSwitcher(locale, isOpen) {

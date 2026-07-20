@@ -21,6 +21,18 @@ const OFFER_CATALOG_VARIANTS = [
   { id: 'bs_variant_night_gummies_60', name: 'Nighttime Gummies · 60 count', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
   { id: 'bs_variant_travel_gummies_20', name: 'Travel Gummies · 20 count', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
   { id: 'bs_variant_refill_60', name: 'Sleep Reset Refill · 60 count', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_sleep_support_30', name: 'Sleep Support Capsules · 30 count', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_magnesium_powder_20', name: 'Magnesium Night Powder · 20 servings', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_lavender_tea_20', name: 'Lavender Wind-down Tea · 20 bags', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_dream_mist_50', name: 'Dream Mist Pillow Spray · 50 ml', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_recover_gummies_60', name: 'Rest & Recover Gummies · 60 count', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_gentle_sleep_30', name: 'Gentle Sleep Aid · 30 capsules', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_night_gummies_120', name: 'Nighttime Gummies · 120 count', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_refill_30', name: 'Sleep Reset Refill · 30 count', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_calm_bundle', name: 'Calm Evening Bundle · 3 items', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_travel_sleep_kit', name: 'Travel Sleep Kit · 5 items', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_white_noise_mini', name: 'White Noise Mini · 1 unit', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
+  { id: 'bs_variant_weighted_eye_mask', name: 'Weighted Eye Mask · 1 unit', mapped: true, inventoryState: 'Available', currencies: ['USD', 'CAD'], markets: ['US', 'CA'] },
 ];
 
 const OFFER_SOURCE_PRODUCTS = [
@@ -344,7 +356,7 @@ const FUNNELS = [
     rules: ['Customer has placed at least 2 orders', 'Last order was 30+ days ago'],
     audienceConditions: [
       { field: 'past_orders', operator: 'at_least', value: '2' },
-      { field: 'last_order', operator: 'at_least', value: '30 days ago' },
+      { field: 'last_order', operator: 'more_than_ago', value: '30' },
     ],
     draftRevisionSequence: 8,
     draftRevisionId: 'fr_funnel-refill_8',
@@ -922,6 +934,132 @@ function draftInstallFunnel(funnel) {
   });
 }
 
+function createInitialPurchaseFlow(template) {
+  const draft = draftInstallFunnel(template);
+  const entry = draft.nodes.find(function (node) { return node.kind === 'entry'; });
+  const checkout = draft.nodes.find(function (node) { return node.kind === 'checkout'; });
+  const thankYou = draft.nodes.find(function (node) { return node.kind === 'thank-you'; });
+  return Object.assign({}, draft, {
+    id: 'funnel-default',
+    name: 'Smooth checkout',
+    systemCopy: {
+      name: { en: 'Smooth checkout', zh: '顺畅结账' },
+      audience: { en: 'All eligible shoppers', zh: '所有符合条件的买家' },
+    },
+    priority: 999,
+    isDefault: true,
+    audience: 'All eligible shoppers',
+    rules: ['All eligible shoppers'],
+    audienceConditions: [],
+    draftRevisionSequence: 1,
+    draftRevisionId: 'fr_funnel-default_1',
+    allocationVersion: 1,
+    bucketSeed: 'bucket_default_v1',
+    paymentRouteProviderIds: [],
+    paymentRouteBindings: [],
+    requiredPaymentMethods: ['card'],
+    nodes: [
+      Object.assign({}, entry, { detail: 'All eligible shoppers', state: 'Ready' }),
+      Object.assign({}, checkout, { detail: 'Draft Checkout page ready to configure', state: 'Draft' }),
+      Object.assign({}, thankYou, { detail: 'Draft Thank you page ready to configure', state: 'Draft' }),
+    ],
+    graphEdges: [
+      { from: entry.id, to: checkout.id, outcome: 'eligible_hosted_bucket' },
+      { from: entry.id, to: 'shopify-native-checkout', outcome: 'native_control_or_fallback' },
+      { from: checkout.id, to: thankYou.id, outcome: 'checkout_completed' },
+    ],
+  });
+}
+
+function createFirstOrderBoostFlow(template) {
+  const draft = draftInstallFunnel(template);
+  const entry = draft.nodes.find(function (node) { return node.kind === 'entry'; });
+  const checkout = draft.nodes.find(function (node) { return node.kind === 'checkout'; });
+  const upsell = draft.nodes.find(function (node) { return node.kind === 'upsell'; });
+  const thankYou = draft.nodes.find(function (node) { return node.kind === 'thank-you'; });
+  return Object.assign({}, draft, {
+    id: 'funnel-first-order-boost',
+    name: 'First-order boost',
+    systemCopy: {
+      name: { en: 'First-order boost', zh: '首单加购' },
+      audience: { en: 'First-time shoppers', zh: '首单买家' },
+    },
+    priority: 10,
+    audience: 'First-time shoppers',
+    rules: ['Customer is new'],
+    audienceConditions: [{ field: 'customer_type', operator: 'is', value: 'New customer' }],
+    draftRevisionSequence: 1,
+    draftRevisionId: 'fr_funnel-first-order-boost_1',
+    allocationVersion: 1,
+    bucketSeed: 'bucket_first_order_boost_v1',
+    paymentRouteProviderIds: [],
+    paymentRouteBindings: [],
+    requiredPaymentMethods: ['card'],
+    nodes: [
+      Object.assign({}, entry, { detail: 'First-time shoppers', state: 'Ready' }),
+      Object.assign({}, checkout, { detail: 'Draft Checkout page ready to configure', state: 'Draft' }),
+      Object.assign({}, upsell, { detail: 'Draft Upsell ready to configure', state: 'Draft' }),
+      Object.assign({}, thankYou, { detail: 'Draft Thank you page ready to configure', state: 'Draft' }),
+    ],
+    graphEdges: [
+      { from: entry.id, to: checkout.id, outcome: 'eligible_hosted_bucket' },
+      { from: entry.id, to: 'shopify-native-checkout', outcome: 'native_control_or_fallback' },
+      { from: checkout.id, to: upsell.id, outcome: 'checkout_completed_offer_eligible' },
+      { from: checkout.id, to: thankYou.id, outcome: 'offer_ineligible_or_skipped' },
+      { from: upsell.id, to: thankYou.id, outcome: 'accepted' },
+      { from: upsell.id, to: thankYou.id, outcome: 'declined' },
+      { from: upsell.id, to: thankYou.id, outcome: 'unavailable_or_skipped' },
+    ],
+  });
+}
+
+function createRepeatOrderRecoveryFlow(template) {
+  const draft = draftInstallFunnel(template);
+  const entry = draft.nodes.find(function (node) { return node.kind === 'entry'; });
+  const checkout = draft.nodes.find(function (node) { return node.kind === 'checkout'; });
+  const upsell = draft.nodes.find(function (node) { return node.kind === 'upsell'; });
+  const downsell = draft.nodes.find(function (node) { return node.kind === 'downsell'; });
+  const thankYou = draft.nodes.find(function (node) { return node.kind === 'thank-you'; });
+  return Object.assign({}, draft, {
+    id: 'funnel-repeat-order-recovery',
+    name: 'Second-chance offer',
+    systemCopy: {
+      name: { en: 'Second-chance offer', zh: '犹豫挽回' },
+      audience: { en: 'Returning shoppers', zh: '复购买家' },
+    },
+    priority: 20,
+    audience: 'Returning shoppers',
+    rules: ['Customer has placed at least 1 order'],
+    audienceConditions: [{ field: 'past_orders', operator: 'at_least', value: '1' }],
+    draftRevisionSequence: 1,
+    draftRevisionId: 'fr_funnel-repeat-order-recovery_1',
+    allocationVersion: 1,
+    bucketSeed: 'bucket_repeat_order_recovery_v1',
+    paymentRouteProviderIds: [],
+    paymentRouteBindings: [],
+    requiredPaymentMethods: ['card'],
+    nodes: [
+      Object.assign({}, entry, { detail: 'Returning shoppers', state: 'Ready' }),
+      Object.assign({}, checkout, { detail: 'Draft Checkout page ready to configure', state: 'Draft' }),
+      Object.assign({}, upsell, { detail: 'Draft Upsell ready to configure', state: 'Draft' }),
+      Object.assign({}, downsell, { detail: 'Draft Downsell ready to configure', state: 'Draft' }),
+      Object.assign({}, thankYou, { detail: 'Draft Thank you page ready to configure', state: 'Draft' }),
+    ],
+    graphEdges: [
+      { from: entry.id, to: checkout.id, outcome: 'eligible_hosted_bucket' },
+      { from: entry.id, to: 'shopify-native-checkout', outcome: 'native_control_or_fallback' },
+      { from: checkout.id, to: upsell.id, outcome: 'checkout_completed_offer_eligible' },
+      { from: checkout.id, to: thankYou.id, outcome: 'offer_ineligible_or_skipped' },
+      { from: upsell.id, to: thankYou.id, outcome: 'accepted' },
+      { from: upsell.id, to: downsell.id, outcome: 'declined' },
+      { from: upsell.id, to: thankYou.id, outcome: 'unavailable_or_skipped' },
+      { from: downsell.id, to: thankYou.id, outcome: 'accepted' },
+      { from: downsell.id, to: thankYou.id, outcome: 'declined' },
+      { from: downsell.id, to: thankYou.id, outcome: 'unavailable_or_skipped' },
+    ],
+  });
+}
+
 function installPaymentProvider(provider) {
   if (!['stripe', 'airwallex', 'paypal'].includes(provider.id)) return provider;
   return Object.assign({}, provider, {
@@ -1118,7 +1256,13 @@ export function createMockBestCheckoutState(profile) {
   if (demoProfile === 'live') return publishDemoStore(initialState);
 
   initialState.pages = initialState.pages.map(draftTemplatePage);
-  initialState.funnels = initialState.funnels.map(draftInstallFunnel);
+  initialState.funnels = [
+    createFirstOrderBoostFlow(initialState.funnels[0]),
+    createRepeatOrderRecoveryFlow(initialState.funnels[0]),
+    createInitialPurchaseFlow(initialState.funnels[0]),
+  ];
+  initialState.ui.activeFunnelId = 'funnel-default';
+  initialState.ui.activeNodeId = 'checkout-main';
   initialState.offerVersions = initialState.offerVersions.map(function (offer) { return Object.assign({}, offer, { status: 'Draft' }); });
   initialState.recommendationRuleVersions = initialState.recommendationRuleVersions.map(function (rule) { return Object.assign({}, rule, { status: 'Draft' }); });
   initialState.providers = initialState.providers.map(installPaymentProvider);
