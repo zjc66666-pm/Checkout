@@ -1,19 +1,47 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="BestCheckout Shopify Custom App interactive prototype"
-    />
-    <title>BestCheckout · Shopify Custom App</title>
-    <link rel="stylesheet" href="./src/views/admin/bestcheckout/style.css?rev=20260720-offer-picker-modal-v139" />
-  </head>
-  <body>
-    <div id="app"></div>
-    <div id="modal-root"></div>
-    <div id="toast-root" class="toast-root" aria-live="polite"></div>
-    <script type="module" src="./src/views/admin/bestcheckout/app.js?rev=20260720-offer-picker-modal-v139"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BestCheckout — Merchant admin</title>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/tailwind-config.js?v=20260607k"></script>
+  <link rel="stylesheet" href="assets/theme.css?v=20260722attentioncompact1" />
+  <!-- ECharts GL must register after ECharts. `defer` keeps the page non-blocking
+       while preserving execution order for the Live View globe. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+</head>
+<body class="bg-page text-ink font-sans antialiased">
+  <!-- Single-page app: the shell (sidebar + header) and every module view are rendered by shell.js. -->
+  <div id="app" class="flex h-screen overflow-hidden"></div>
+
+  <script src="assets/nav.js?v=20260721staffaccess1"></script>
+  <!-- Bundle catalog is loaded eagerly so the shared bundle picker (used by Subscriptions → Add plan) always has data,
+       even before the Bundles module is visited. Pure data; the lazy module loader re-uses the same cached file. -->
+  <script src="bundles/js/data.js?v=20260706ab"></script>
+  <!-- Subscription data is also a read-only dependency of order-detail deep links. -->
+  <script src="subscriptions/js/data.js?v=20260713k"></script>
+  <script src="assets/shell.js?v=20260722flowtablecleanup1"></script>
+  <script src="assets/widgets.js?v=20260721offerpicker4"></script>
+  <!-- Runtime i18n overlay: engine + shared-chrome dict, then the per-module dictionary.
+       Default language is ZH; the top-right toggle switches and persists. -->
+  <script src="assets/i18n.js?v=20260706a"></script>
+  <script src="assets/i18n/orders-customers.js?v=20260721shopifyordersync2"></script>
+  <script src="assets/i18n/products-collections.js?v=20260710a"></script>
+  <script src="assets/i18n/content.js?v=20260624a"></script>
+  <script src="assets/i18n/reviews-discounts-google.js?v=20260624a"></script>
+  <script src="assets/i18n/facebook.js?v=20260630a"></script>
+  <script src="assets/i18n/google.js?v=20260630a"></script>
+  <script src="assets/i18n/settings.js?v=20260721shopifyconnection2"></script>
+  <script src="assets/i18n/analytics-widgets.js?v=20260624a"></script>
+  <script src="assets/i18n/online-store-apps.js?v=20260706a"></script>
+  <script src="assets/i18n/selling-apps.js?v=20260706a"></script>
+  <!-- QA polish: interpolated templates + split-node fixes from the live preview sweep -->
+  <script src="assets/i18n/zz-polish.js?v=20260624a"></script>
+  <!-- final overrides: cross-module ambiguous-word resolutions (loads last → wins) -->
+  <script src="assets/i18n-dict.js?v=20260628a"></script>
+  <script src="assets/i18n-bestcheckout.js?v=20260721overviewdata1"></script>
+</body>
 </html>
